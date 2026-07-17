@@ -8,7 +8,7 @@ import {
   loadTripSearchData,
   saveTripSearchData,
   tripSearchDataToFormValues
-} from "@/lib/storage/trip-storage";
+} from "@/lib/storage/planning-session";
 import { validateTripSearch, type TripSearchErrors } from "@/lib/validation/trip-search";
 import type { TripSearchFormValues } from "@/types/trip";
 import { Button } from "@/components/ui/button";

@@ -2,7 +2,6 @@ import type { TripPreferences, TripSearchData, TripSearchFormValues } from "@/ty
 
 const tripSearchKey = "lazytrip.tripSearch";
 const tripPreferencesKey = "lazytrip.tripPreferences";
-const tripPreferencesProgressKey = "lazytrip.tripPreferencesProgress";
 
 const canUseSessionStorage = () => typeof window !== "undefined" && Boolean(window.sessionStorage);
 
@@ -54,18 +53,3 @@ export const saveTripPreferences = (preferences: TripPreferences) => {
 };
 
 export const loadTripPreferences = () => readJson<TripPreferences>(tripPreferencesKey);
-
-export const saveTripPreferencesProgress = (progress: { preferences: TripPreferences; slideIndex: number }) => {
-  writeJson(tripPreferencesProgressKey, progress);
-};
-
-export const loadTripPreferencesProgress = () =>
-  readJson<{ preferences: TripPreferences; slideIndex: number }>(tripPreferencesProgressKey);
-
-export const clearTripPreferencesProgress = () => {
-  if (!canUseSessionStorage()) {
-    return;
-  }
-
-  window.sessionStorage.removeItem(tripPreferencesProgressKey);
-};

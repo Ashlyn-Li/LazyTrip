@@ -1,12 +1,12 @@
 # LazyTrip
 
-LazyTrip is a new frontend prototype for planning international trips.
+LazyTrip is a frontend prototype for planning international trips.
 
 Tagline: Tell us where. We'll plan the rest.
 
 ## Current Prototype Scope
 
-This foundation contains one user-facing feature: a responsive trip-search homepage for entering the basic details of an international trip. It does not navigate, call APIs, save data, or generate itineraries.
+This prototype contains two user-facing steps: a responsive trip-search homepage and a travel-preferences page at `/plan/preferences`. It does not call APIs, save data to a backend, or generate itineraries.
 
 ## Technology
 
@@ -45,15 +45,19 @@ npm run build
 ```text
 src/
 ├── app/
+│   ├── plan/preferences/
 │   ├── globals.css
 │   ├── layout.tsx
 │   └── page.tsx
 ├── components/
+│   ├── home/
 │   ├── layout/
+│   ├── trip-preferences/
 │   ├── trip-search/
 │   └── ui/
 ├── lib/
 │   ├── constants/
+│   ├── storage/
 │   └── validation/
 └── types/
 ```
@@ -64,13 +68,23 @@ src/
 - Responsive trip-search form
 - Accessible labels and keyboard-usable controls
 - Validation for required locations, dates, traveller counts, and optional budget
-- Typed `TripSearchData` object creation on successful submission
-- Temporary confirmation message after valid submission
-- Development console logging for submitted trip-search data
+- Session storage handoff from the homepage to `/plan/preferences`
+- Homepage restoration from saved trip-search values where practical
+- Travel-preferences form with trip summary, guided-experience options, and validation
+- Development console logging for submitted trip-search data and saved preferences
+
+## Temporary Storage
+
+Planning-session data is stored in `sessionStorage` for the current browser tab:
+
+- `lazytrip.tripSearch` stores valid trip-search details.
+- `lazytrip.tripPreferences` stores saved travel preferences.
+
+No information is sent to a backend, database, API route, or external service.
 
 ## Features Deliberately Not Implemented
 
-- Preferences page
+- Constraint review page
 - Itinerary generation
 - Backend, database, or API routes
 - Authentication
@@ -78,8 +92,14 @@ src/
 - Maps
 - Travel, flight, hotel, or booking APIs
 - Destination autocomplete
-- Local storage or cross-page state preservation
+- Long-term persistence across devices or browser sessions
+
+## Current Limitations
+
+- Stored data is temporary and scoped to the current browser tab.
+- Additional comments and fixed plans are saved exactly as entered, but not interpreted.
+- Preferences do not yet feed into itinerary generation or constraint review.
 
 ## Suggested Next Step
 
-> Add a preferences page and preserve the submitted trip-search data between the two pages.
+> Add a constraint-review page that converts the saved comments into editable mock constraints without calling an LLM.

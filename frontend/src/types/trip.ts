@@ -40,19 +40,29 @@ export type ExplorationStyle =
   | "balanced-mixture"
   | "mostly-guided";
 export type GuidePreference = "small-group" | "private-guide" | "no-preference";
+export type GuidedActivityType =
+  | "food-tour"
+  | "culture-history-tour"
+  | "nature-day-trip"
+  | "nightlife-experience"
+  | "workshop-class";
 export type AccommodationStyle = "budget" | "mid-range" | "boutique" | "luxury";
 export type TransportMode = "walking" | "public-transport" | "taxi" | "rental-car";
-export type PreferredStartPeriod = "early" | "standard" | "late";
+export type FreeTimeLevel = "very-little" | "some" | "plenty";
 
 export type TripPreferences = {
   pace: TravelPace;
   interests: TripInterest[];
   explorationStyle: ExplorationStyle;
-  guidePreference?: GuidePreference;
-  accommodationStyle: AccommodationStyle;
   transportModes: TransportMode[];
-  preferredStartPeriod: PreferredStartPeriod;
+  accommodationStyle: AccommodationStyle | null;
+  preferredStartTime: string;
+  freeTimeLevel: FreeTimeLevel;
+  guidePreference: GuidePreference | null;
+  guidedActivityTypes: GuidedActivityType[];
+  dietaryRequirements: string;
+  accessibilityRequirements: string;
   mustSeePlaces: string;
-  requirements: string;
-  fixedPlansAndComments: string;
+  thingsToAvoid: string;
+  additionalComments: string;
 };
