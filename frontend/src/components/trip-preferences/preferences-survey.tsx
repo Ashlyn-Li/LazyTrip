@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { AppHeader } from "@/components/layout/app-header";
 import { PageContainer } from "@/components/layout/page-container";
@@ -100,6 +101,7 @@ const loadNormalizedPreferences = (): TripPreferences => ({
 });
 
 export const PreferencesSurvey = () => {
+  const router = useRouter();
   const [tripSearchData] = useState(() => loadTripSearchData());
   const [preferences, setPreferences] = useState<TripPreferences>(() => loadNormalizedPreferences());
   const [slideIndex, setSlideIndex] = useState(0);
@@ -190,7 +192,8 @@ export const PreferencesSurvey = () => {
     saveTripPreferences(finalPreferences);
     console.log("TripPreferences", finalPreferences);
     setPreferences(finalPreferences);
-    setSavedMessage("Preferences saved — trip constraints are coming next.");
+    setSavedMessage("");
+    router.push("/plan/generating");
   };
 
   if (!tripSearchData) {
@@ -359,7 +362,7 @@ export const PreferencesSurvey = () => {
             <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
               {slideIndex > 0 ? (
                 <Button
-                  className="border border-coast-100 bg-green text-coast-700 hover:bg-coast-50"
+                  className="border border-coast-100 bg-white text-coast-700 hover:bg-coast-50"
                   type="button"
                   onClick={goBack}
                 >
@@ -369,7 +372,7 @@ export const PreferencesSurvey = () => {
                 <span aria-hidden="true" />
               )}
               {slideIndex === totalSlides - 1 ? (
-                <Button type="submit">Save preferences</Button>
+                <Button type="submit">Create my trip</Button>
               ) : (
                 <Button type="button" onClick={goNext}>
                   Continue
