@@ -21,3 +21,48 @@ export type TripSearchFormValues = {
   budget: string;
   currency: CurrencyCode;
 };
+
+export type TravelPace = "relaxed" | "balanced" | "packed";
+export type TripInterest =
+  | "food"
+  | "local-culture"
+  | "history"
+  | "art"
+  | "nature"
+  | "shopping"
+  | "nightlife"
+  | "beaches"
+  | "photography"
+  | "wellness";
+export type ExplorationStyle =
+  | "mostly-independent"
+  | "independent-with-guides"
+  | "balanced-mixture"
+  | "mostly-guided";
+export type GuidePreference = "small-group" | "private-guide" | "no-preference";
+export type GuidedActivityType =
+  | "food-tour"
+  | "culture-history-tour"
+  | "nature-day-trip"
+  | "nightlife-experience"
+  | "workshop-class";
+export type AccommodationStyle = "budget" | "mid-range" | "boutique" | "luxury";
+export type TransportMode = "walking" | "public-transport" | "taxi" | "rental-car";
+export type FreeTimeLevel = "very-little" | "some" | "plenty";
+
+export type TripPreferences = {
+  pace: TravelPace;
+  interests: TripInterest[];
+  explorationStyle: ExplorationStyle;
+  transportModes: TransportMode[];
+  accommodationStyle: AccommodationStyle | null;
+  preferredStartTime: string;
+  freeTimeLevel: FreeTimeLevel;
+  guidePreference: GuidePreference | null;
+  guidedActivityTypes: GuidedActivityType[];
+  dietaryRequirements: string;
+  accessibilityRequirements: string;
+  mustSeePlaces: string;
+  thingsToAvoid: string;
+  additionalComments: string;
+};

@@ -6,20 +6,20 @@ const config: Config = {
     extend: {
       colors: {
         coast: {
-          50: "#f4fbf9",
-          100: "#dff4ef",
-          500: "#2f9c8f",
-          700: "#1d6f68"
+          50: "#fff3f7",
+          100: "#ffdce9",
+          500: "#ee7fa8",
+          700: "#cf4f7f"
         },
         coral: {
-          100: "#ffe8dc",
-          500: "#f47c56",
-          700: "#b94d30"
+          100: "#f1e8ff",
+          500: "#8c6ee8",
+          700: "#5a45bd"
         },
-        ink: "#17211f"
+        ink: "#1e1b2e"
       },
       boxShadow: {
-        soft: "0 24px 80px rgba(23, 33, 31, 0.12)"
+        soft: "0 24px 80px rgba(118, 65, 78, 0.14)"
       }
     }
   },

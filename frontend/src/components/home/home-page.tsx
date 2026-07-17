@@ -3,8 +3,8 @@ import { PageContainer } from "@/components/layout/page-container";
 import { TripSearchForm } from "@/components/trip-search/trip-search-form";
 
 export const HomePage = () => (
-  <main className="min-h-screen overflow-hidden bg-[#f8f4ee] text-ink">
-    <div className="absolute inset-x-[-6rem] top-[-4rem] h-[28rem] bg-[radial-gradient(circle_at_22%_28%,rgba(47,156,143,0.24),rgba(47,156,143,0.10)_34%,transparent_66%),radial-gradient(circle_at_78%_22%,rgba(244,124,86,0.20),rgba(244,124,86,0.08)_36%,transparent_68%)] blur-xl [mask-image:linear-gradient(to_bottom,black_0%,black_62%,transparent_100%)]" />
+  <main className="min-h-screen overflow-hidden bg-[#fbf6fb] text-ink">
+    <div className="absolute inset-x-[-6rem] top-[-4rem] h-[28rem] bg-[radial-gradient(circle_at_22%_28%,rgba(238,127,168,0.28),rgba(238,127,168,0.12)_34%,transparent_66%),radial-gradient(circle_at_78%_22%,rgba(140,110,232,0.18),rgba(140,110,232,0.07)_36%,transparent_68%)] blur-xl [mask-image:linear-gradient(to_bottom,black_0%,black_62%,transparent_100%)]" />
     <AppHeader />
     <PageContainer>
       <div className="relative">
