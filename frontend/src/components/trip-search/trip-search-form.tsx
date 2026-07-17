@@ -1,8 +1,14 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { currencies } from "@/lib/constants/currencies";
+import {
+  loadTripSearchData,
+  saveTripSearchData,
+  tripSearchDataToFormValues
+} from "@/lib/storage/trip-storage";
 import { validateTripSearch, type TripSearchErrors } from "@/lib/validation/trip-search";
 import type { TripSearchFormValues } from "@/types/trip";
 import { Button } from "@/components/ui/button";
@@ -22,7 +28,12 @@ const initialValues: TripSearchFormValues = {
 };
 
 export const TripSearchForm = () => {
-  const [values, setValues] = useState<TripSearchFormValues>(initialValues);
+  const router = useRouter();
+  const [values, setValues] = useState<TripSearchFormValues>(() => {
+    const savedTripSearchData = loadTripSearchData();
+
+    return savedTripSearchData ? tripSearchDataToFormValues(savedTripSearchData) : initialValues;
+  });
   const [errors, setErrors] = useState<TripSearchErrors>({});
   const [confirmation, setConfirmation] = useState("");
 
@@ -43,8 +54,10 @@ export const TripSearchForm = () => {
       return;
     }
 
+    saveTripSearchData(result.data);
     console.log("TripSearchData", result.data);
     setConfirmation("Trip details saved — preferences are coming next.");
+    router.push("/plan/preferences");
   };
 
   return (
