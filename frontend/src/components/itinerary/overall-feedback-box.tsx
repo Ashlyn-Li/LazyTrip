@@ -33,7 +33,7 @@ export const OverallFeedbackBox = ({ initialComment, onSave }: OverallFeedbackBo
       </div>
       <textarea
         id="overall-itinerary-feedback"
-        className="min-h-28 w-full resize-none rounded-3xl border border-coast-100 bg-[#fbfffd] px-4 py-3 text-base text-ink shadow-inner outline-none placeholder:text-slate-400 focus:border-coast-500 focus:ring-4 focus:ring-coast-100"
+        className="min-h-28 w-full resize-none rounded-3xl border border-coast-100 bg-[#fdf9ff] px-4 py-3 text-base text-ink shadow-inner outline-none placeholder:text-slate-400 focus:border-coast-500 focus:ring-4 focus:ring-coast-100"
         placeholder="Tell LazyTrip what to adjust across the whole itinerary, e.g. make this slower, add more local food, or reduce shopping."
         value={comment}
         onChange={(event) => {

@@ -198,7 +198,7 @@ export const PreferencesSurvey = () => {
 
   if (!tripSearchData) {
     return (
-      <main className="min-h-screen bg-[#f8f4ee] text-ink">
+      <main className="min-h-screen bg-[#fbf6fb] text-ink">
         <AppHeader />
         <PageContainer>
           <section className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center text-center">
@@ -216,8 +216,8 @@ export const PreferencesSurvey = () => {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f8f4ee] text-ink">
-      <div className="absolute inset-x-[-6rem] top-[-4rem] h-[24rem] bg-[radial-gradient(circle_at_22%_28%,rgba(47,156,143,0.20),rgba(47,156,143,0.08)_34%,transparent_66%),radial-gradient(circle_at_78%_22%,rgba(244,124,86,0.16),rgba(244,124,86,0.06)_36%,transparent_68%)] blur-xl [mask-image:linear-gradient(to_bottom,black_0%,black_62%,transparent_100%)]" />
+    <main className="min-h-screen overflow-hidden bg-[#fbf6fb] text-ink">
+      <div className="absolute inset-x-[-6rem] top-[-4rem] h-[24rem] bg-[radial-gradient(circle_at_22%_28%,rgba(238,127,168,0.24),rgba(238,127,168,0.10)_34%,transparent_66%),radial-gradient(circle_at_78%_22%,rgba(140,110,232,0.16),rgba(140,110,232,0.06)_36%,transparent_68%)] blur-xl [mask-image:linear-gradient(to_bottom,black_0%,black_62%,transparent_100%)]" />
       <AppHeader />
       <PageContainer>
         <section className="relative mx-auto grid min-h-[calc(100vh-5rem)] max-w-4xl content-center gap-5 pb-10 pt-4">

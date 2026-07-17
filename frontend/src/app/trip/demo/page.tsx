@@ -7,7 +7,7 @@ const DemoItinerary = dynamic(
   {
     ssr: false,
     loading: () => (
-      <main className="min-h-screen bg-[#f8f4ee] text-ink">
+      <main className="min-h-screen bg-[#fbf6fb] text-ink">
         <section className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center px-5 text-center">
           <h1 className="text-4xl font-bold">Loading your demo itinerary</h1>
         </section>
