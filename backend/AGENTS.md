@@ -31,7 +31,12 @@ Do not create these files before their responsibilities exist.
 - Services contain business rules.
 - Repositories handle persistence.
 - Providers isolate third-party APIs.
+- The Itineraries module owns itinerary-generation jobs and generated itinerary output.
+- Itinerary providers must be accessed through a provider interface, not directly from routers.
+- Provider output must be validated before a generation job is marked completed.
+- Tests for generation use the fake provider; no real provider is active yet.
 - Routes must not contain SQL, large prompts, or complete planning algorithms.
+- Routes must not call external itinerary providers directly.
 - Services must not expose raw provider responses to the frontend.
 - Modules must not modify another module through its repository directly.
 
@@ -53,6 +58,7 @@ Do not create these files before their responsibilities exist.
 - Validate every request on the backend.
 - Keep secrets out of source control.
 - Never expose provider or database credentials to the frontend.
+- Do not enable a real LLM provider without moderation, rate limits, quotas, and structured-output validation.
 - Do not return stack traces or raw internal errors.
 - Do not log tokens, secrets, or unnecessary personal information.
 

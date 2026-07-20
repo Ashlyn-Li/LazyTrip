@@ -8,9 +8,9 @@ This document describes the intended backend design. The backend should be built
 
 ## Current status
 
-**Stage:** Backend planning  
-**Current milestone:** A running FastAPI service with health, trip-preview, and preferences-preview endpoints  
-**Not yet included:** Database, authentication, LLM calls, maps, hotels, background workers, or production deployment
+**Stage:** Backend foundation  
+**Current milestone:** Health, trip preview, preferences preview, and fake asynchronous itinerary generation  
+**Not yet included:** Database, authentication, LLM calls, maps, hotels, durable workers, or production deployment
 
 ## Implemented endpoints
 
@@ -18,6 +18,8 @@ This document describes the intended backend design. The backend should be built
 GET /api/v1/health
 POST /api/v1/trips/preview
 POST /api/v1/trips/preferences/preview
+POST /api/v1/itinerary-generations
+GET /api/v1/itinerary-generations/{job_id}
 ```
 
 The preferences-preview endpoint remains inside the Trips module because these preferences belong to a specific trip journey. It validates and normalizes the current frontend preferences survey, returns a typed preview, and does not save anything.
@@ -113,9 +115,112 @@ Validation and normalization:
 - Free text is not semantically interpreted yet.
 - No preferences data is saved.
 
+### Fake itinerary generation
+
+```http
+POST /api/v1/itinerary-generations
+Content-Type: application/json
+```
+
+Example request:
+
+```json
+{
+  "trip": {
+    "origin": "London, United Kingdom",
+    "destination": "Tokyo, Japan",
+    "departure_date": "2026-09-12",
+    "return_date": "2026-09-15",
+    "adults": 2,
+    "children": 0,
+    "budget": 5000,
+    "currency": "GBP"
+  },
+  "preferences": {
+    "pace": "balanced",
+    "interests": ["food", "local-culture"],
+    "explorationStyle": "independent-with-guides",
+    "transportModes": ["walking", "public-transport"],
+    "accommodationStyle": "boutique",
+    "preferredStartTime": "10:00",
+    "freeTimeLevel": "some",
+    "guidePreference": "small-group",
+    "guidedActivityTypes": ["food-tour"],
+    "dietaryRequirements": "",
+    "accessibilityRequirements": "",
+    "mustSeePlaces": "teamLab Planets",
+    "thingsToAvoid": "",
+    "additionalComments": "teamLab Planets on day 2 at 1 PM"
+  }
+}
+```
+
+Start response:
+
+```json
+{
+  "job_id": "generated-stable-id",
+  "status": "queued",
+  "status_url": "/api/v1/itinerary-generations/generated-stable-id"
+}
+```
+
+Poll status:
+
+```http
+GET /api/v1/itinerary-generations/{job_id}
+```
+
+Job states are:
+
+```text
+queued
+validating
+collecting_data
+generating
+validating_output
+completed
+failed
+```
+
+Progress never moves backwards and reaches `100` only when the job is completed. Unknown jobs return `404`.
+
+The fake generator uses `app/modules/itineraries/data/mock_itinerary.py` as the authoritative backend mock itinerary fixture. It adapts destination and dates from the submitted trip, preserves the known Tokyo fixed event on day 2 at 13:00, and clearly labels output as mock/unverified. It performs no HTTP requests and requires no API key.
+
+Provider access goes through the `ItineraryGenerator` protocol. The only active provider is `FakeItineraryGenerator`. Router code starts jobs through the itinerary service and never calls providers directly.
+
+Generated output is validated before completion:
+
+- Itinerary day count must match the trip dates.
+- Day dates must fall inside the trip range.
+- Day numbers must be ordered and unique.
+- Item IDs must be unique.
+- Activity end times must follow start times.
+- Activities must not overlap within a day.
+- Travel durations must be non-negative.
+- Money values must contain currency codes.
+- The fixed Tokyo sample event remains fixed for trips with at least two days.
+- Output must be labelled as mock data.
+
+If validation fails, the job is marked `failed` and no invalid itinerary is returned.
+
+The in-memory job store is intentionally temporary. Jobs disappear when FastAPI restarts, and multiple production workers cannot safely share this store. Durable state is the next architectural step before any real provider integration.
+
+Future configuration:
+
+```text
+ITINERARY_GENERATOR=fake
+
+# Future real provider configuration - not active
+OPENAI_API_KEY=
+OPENAI_MODEL=
+```
+
+Before a real LLM provider is enabled, LazyTrip needs moderation, rate limits, quotas, domain enforcement, and strict structured-output validation.
+
 ## Recommended next milestone
 
-Add PostgreSQL, migrations, and trip persistence without changing the two existing preview endpoints.
+Persist trips, preferences, generation jobs, and itinerary versions so generation can survive backend restarts.
 
 ## Architecture
 

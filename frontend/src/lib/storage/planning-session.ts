@@ -1,3 +1,4 @@
+import type { GeneratedItinerary } from "@/types/itinerary";
 import type {
   TripPlanningSession,
   TripPreferences,
@@ -10,6 +11,8 @@ import type {
 const tripSearchKey = "lazytrip.tripSearch";
 const tripPlanningSessionKey = "lazytrip.tripPlanningSession";
 const tripPreferencesKey = "lazytrip.tripPreferences";
+const activeItineraryGenerationJobKey = "lazytrip.activeItineraryGenerationJob";
+const generatedItineraryKey = "lazytrip.generatedItinerary";
 
 const canUseSessionStorage = () => typeof window !== "undefined" && Boolean(window.sessionStorage);
 
@@ -51,6 +54,8 @@ export const clearPlanningSession = () => {
   removeJson(tripSearchKey);
   removeJson(tripPlanningSessionKey);
   removeJson(tripPreferencesKey);
+  removeJson(activeItineraryGenerationJobKey);
+  removeJson(generatedItineraryKey);
 };
 
 export const saveTripSearchData = (tripSearchData: TripSearchData) => {
@@ -103,3 +108,24 @@ export const tripPreferencesPreviewResponseToPreferences = (
 ): TripPreferences => response.preferences;
 
 export const loadTripPreferences = () => readJson<TripPreferences>(tripPreferencesKey);
+
+export const saveActiveItineraryGenerationJob = (jobId: string) => {
+  writeJson(activeItineraryGenerationJobKey, jobId);
+};
+
+export const loadActiveItineraryGenerationJob = () =>
+  readJson<string>(activeItineraryGenerationJobKey);
+
+export const clearActiveItineraryGenerationJob = () => {
+  removeJson(activeItineraryGenerationJobKey);
+};
+
+export const saveGeneratedItinerary = (itinerary: GeneratedItinerary) => {
+  writeJson(generatedItineraryKey, itinerary);
+};
+
+export const loadGeneratedItinerary = () => readJson<GeneratedItinerary>(generatedItineraryKey);
+
+export const clearGeneratedItinerary = () => {
+  removeJson(generatedItineraryKey);
+};
