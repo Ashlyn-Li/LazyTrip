@@ -7,11 +7,9 @@ import { ApiError } from "@/lib/api/client";
 import { previewTrip } from "@/lib/api/trips";
 import { currencies } from "@/lib/constants/currencies";
 import {
-  loadTripSearchData,
   saveTripPlanningSession,
   saveTripSearchData,
   tripPreviewResponseToPlanningSession,
-  tripSearchDataToFormValues
 } from "@/lib/storage/planning-session";
 import { validateTripSearch, type TripSearchErrors } from "@/lib/validation/trip-search";
 import type { TripSearchFormValues } from "@/types/trip";
@@ -33,11 +31,7 @@ const initialValues: TripSearchFormValues = {
 
 export const TripSearchForm = () => {
   const router = useRouter();
-  const [values, setValues] = useState<TripSearchFormValues>(() => {
-    const savedTripSearchData = loadTripSearchData();
-
-    return savedTripSearchData ? tripSearchDataToFormValues(savedTripSearchData) : initialValues;
-  });
+  const [values, setValues] = useState<TripSearchFormValues>(initialValues);
   const [errors, setErrors] = useState<TripSearchErrors>({});
   const [confirmation, setConfirmation] = useState("");
   const [submitError, setSubmitError] = useState("");

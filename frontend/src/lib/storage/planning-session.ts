@@ -39,6 +39,20 @@ const writeJson = <T>(key: string, value: T) => {
   window.sessionStorage.setItem(key, JSON.stringify(value));
 };
 
+const removeJson = (key: string) => {
+  if (!canUseSessionStorage()) {
+    return;
+  }
+
+  window.sessionStorage.removeItem(key);
+};
+
+export const clearPlanningSession = () => {
+  removeJson(tripSearchKey);
+  removeJson(tripPlanningSessionKey);
+  removeJson(tripPreferencesKey);
+};
+
 export const saveTripSearchData = (tripSearchData: TripSearchData) => {
   writeJson(tripSearchKey, tripSearchData);
 };

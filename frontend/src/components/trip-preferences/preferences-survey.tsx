@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { AppHeader } from "@/components/layout/app-header";
@@ -98,14 +98,29 @@ const freeTimeOptions: { value: FreeTimeLevel; label: string }[] = [
 ];
 
 const textareaClass =
-  "min-h-24 w-full resize-none rounded-2xl border border-coast-100 bg-white px-4 py-3 text-base text-ink shadow-sm transition placeholder:text-slate-400 focus:border-coast-500 focus:outline-none focus:ring-4 focus:ring-coast-100";
+  "min-h-24 w-full resize-none rounded-2xl border border-coast-100 bg-white px-4 py-3 text-base font-normal text-ink shadow-sm transition placeholder:text-slate-400 focus:border-coast-500 focus:outline-none focus:ring-4 focus:ring-coast-100";
 
 const usesGuides = (explorationStyle: ExplorationStyle) => explorationStyle !== "mostly-independent";
 
-const loadNormalizedPreferences = (): TripPreferences => ({
-  ...defaultPreferences,
-  ...loadTripPreferences()
+const normalizePreferences = (preferences: Partial<TripPreferences> | null): TripPreferences => ({
+  pace: preferences?.pace ?? defaultPreferences.pace,
+  interests: preferences?.interests ?? defaultPreferences.interests,
+  explorationStyle: preferences?.explorationStyle ?? defaultPreferences.explorationStyle,
+  transportModes: preferences?.transportModes ?? defaultPreferences.transportModes,
+  accommodationStyle: preferences?.accommodationStyle ?? defaultPreferences.accommodationStyle,
+  preferredStartTime: preferences?.preferredStartTime ?? defaultPreferences.preferredStartTime,
+  freeTimeLevel: preferences?.freeTimeLevel ?? defaultPreferences.freeTimeLevel,
+  guidePreference: preferences?.guidePreference ?? defaultPreferences.guidePreference,
+  guidedActivityTypes: preferences?.guidedActivityTypes ?? defaultPreferences.guidedActivityTypes,
+  dietaryRequirements: preferences?.dietaryRequirements ?? defaultPreferences.dietaryRequirements,
+  accessibilityRequirements:
+    preferences?.accessibilityRequirements ?? defaultPreferences.accessibilityRequirements,
+  mustSeePlaces: preferences?.mustSeePlaces ?? defaultPreferences.mustSeePlaces,
+  thingsToAvoid: preferences?.thingsToAvoid ?? defaultPreferences.thingsToAvoid,
+  additionalComments: preferences?.additionalComments ?? defaultPreferences.additionalComments
 });
+
+const loadNormalizedPreferences = (): TripPreferences => normalizePreferences(loadTripPreferences());
 
 const backendFieldSlideMap: Record<string, number> = {
   pace: 0,
@@ -316,9 +331,7 @@ export const PreferencesSurvey = () => {
     }
   }, [apiError, slideIndex]);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
+  const submitPreferences = async () => {
     if (isSubmitting) {
       return;
     }
@@ -343,8 +356,9 @@ export const PreferencesSurvey = () => {
 
     try {
       const previewResponse = await previewTripPreferences(finalPreferences);
-      const normalizedPreferences =
-        tripPreferencesPreviewResponseToPreferences(previewResponse);
+      const normalizedPreferences = normalizePreferences(
+        tripPreferencesPreviewResponseToPreferences(previewResponse)
+      );
 
       saveTripPreferences(normalizedPreferences);
       setPreferences(normalizedPreferences);
@@ -415,7 +429,7 @@ export const PreferencesSurvey = () => {
 
           <form
             className="rounded-[2rem] border border-white/70 bg-white/90 p-5 shadow-soft backdrop-blur sm:p-7"
-            onSubmit={handleSubmit}
+            onSubmit={(event) => event.preventDefault()}
           >
             <div className="mb-6">
               <h1 className="text-3xl font-bold leading-tight text-ink sm:text-4xl">How do you like to travel?</h1>
@@ -562,7 +576,12 @@ export const PreferencesSurvey = () => {
                 <span aria-hidden="true" />
               )}
               {slideIndex === totalSlides - 1 ? (
-                <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+                <Button
+                  type="button"
+                  disabled={isSubmitting}
+                  aria-busy={isSubmitting}
+                  onClick={submitPreferences}
+                >
                   {isSubmitting ? "Checking your preferences..." : "Create my trip"}
                 </Button>
               ) : (
