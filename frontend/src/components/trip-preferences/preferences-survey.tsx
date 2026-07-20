@@ -362,7 +362,7 @@ export const PreferencesSurvey = () => {
             <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
               {slideIndex > 0 ? (
                 <Button
-                  className="border border-coast-100 bg-white text-coast-700 hover:bg-coast-50"
+                  className="border border-coast-100 bg-pink-400 text-coast-700 hover:bg-coast-50"
                   type="button"
                   onClick={goBack}
                 >
