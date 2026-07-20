@@ -3,10 +3,14 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { ApiError } from "@/lib/api/client";
+import { previewTrip } from "@/lib/api/trips";
 import { currencies } from "@/lib/constants/currencies";
 import {
   loadTripSearchData,
+  saveTripPlanningSession,
   saveTripSearchData,
+  tripPreviewResponseToPlanningSession,
   tripSearchDataToFormValues
 } from "@/lib/storage/planning-session";
 import { validateTripSearch, type TripSearchErrors } from "@/lib/validation/trip-search";
@@ -19,8 +23,8 @@ import { Select } from "@/components/ui/select";
 const initialValues: TripSearchFormValues = {
   origin: "London, United Kingdom",
   destination: "",
-  departureDate: "",
-  returnDate: "",
+  departure_date: "",
+  return_date: "",
   adults: "2",
   children: "0",
   budget: "",
@@ -36,14 +40,17 @@ export const TripSearchForm = () => {
   });
   const [errors, setErrors] = useState<TripSearchErrors>({});
   const [confirmation, setConfirmation] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const updateValue = (name: keyof TripSearchFormValues, value: string) => {
     setValues((currentValues) => ({ ...currentValues, [name]: value }));
     setErrors((currentErrors) => ({ ...currentErrors, [name]: undefined }));
     setConfirmation("");
+    setSubmitError("");
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const result = validateTripSearch(values);
@@ -51,13 +58,31 @@ export const TripSearchForm = () => {
 
     if (!result.success) {
       setConfirmation("");
+      setSubmitError("");
       return;
     }
 
-    saveTripSearchData(result.data);
-    console.log("TripSearchData", result.data);
-    setConfirmation("Trip details saved — preferences are coming next.");
-    router.push("/plan/preferences");
+    setConfirmation("");
+    setSubmitError("");
+    setIsSubmitting(true);
+
+    try {
+      const previewResponse = await previewTrip(result.data);
+      const planningSession = tripPreviewResponseToPlanningSession(previewResponse);
+
+      saveTripSearchData(planningSession.trip);
+      saveTripPlanningSession(planningSession);
+      setConfirmation("Trip details validated. Opening preferences.");
+      router.push("/plan/preferences");
+    } catch (error) {
+      setSubmitError(
+        error instanceof ApiError
+          ? error.message
+          : "LazyTrip could not validate this trip yet. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -74,6 +99,7 @@ export const TripSearchForm = () => {
             autoComplete="address-level2"
             value={values.origin}
             onChange={(event) => updateValue("origin", event.target.value)}
+            disabled={isSubmitting}
             aria-invalid={Boolean(errors.origin)}
             aria-describedby="origin-error"
           />
@@ -87,32 +113,35 @@ export const TripSearchForm = () => {
             autoComplete="off"
             value={values.destination}
             onChange={(event) => updateValue("destination", event.target.value)}
+            disabled={isSubmitting}
             aria-invalid={Boolean(errors.destination)}
             aria-describedby="destination-error"
           />
         </FormField>
 
-        <FormField id="departureDate" label="Departure date" error={errors.departureDate}>
+        <FormField id="departure_date" label="Departure date" error={errors.departure_date}>
           <Input
-            id="departureDate"
-            name="departureDate"
+            id="departure_date"
+            name="departure_date"
             type="date"
-            value={values.departureDate}
-            onChange={(event) => updateValue("departureDate", event.target.value)}
-            aria-invalid={Boolean(errors.departureDate)}
-            aria-describedby="departureDate-error"
+            value={values.departure_date}
+            onChange={(event) => updateValue("departure_date", event.target.value)}
+            disabled={isSubmitting}
+            aria-invalid={Boolean(errors.departure_date)}
+            aria-describedby="departure_date-error"
           />
         </FormField>
 
-        <FormField id="returnDate" label="Return date" error={errors.returnDate}>
+        <FormField id="return_date" label="Return date" error={errors.return_date}>
           <Input
-            id="returnDate"
-            name="returnDate"
+            id="return_date"
+            name="return_date"
             type="date"
-            value={values.returnDate}
-            onChange={(event) => updateValue("returnDate", event.target.value)}
-            aria-invalid={Boolean(errors.returnDate)}
-            aria-describedby="returnDate-error"
+            value={values.return_date}
+            onChange={(event) => updateValue("return_date", event.target.value)}
+            disabled={isSubmitting}
+            aria-invalid={Boolean(errors.return_date)}
+            aria-describedby="return_date-error"
           />
         </FormField>
 
@@ -125,6 +154,7 @@ export const TripSearchForm = () => {
             inputMode="numeric"
             value={values.adults}
             onChange={(event) => updateValue("adults", event.target.value)}
+            disabled={isSubmitting}
             aria-invalid={Boolean(errors.adults)}
             aria-describedby="adults-error"
           />
@@ -139,6 +169,7 @@ export const TripSearchForm = () => {
             inputMode="numeric"
             value={values.children}
             onChange={(event) => updateValue("children", event.target.value)}
+            disabled={isSubmitting}
             aria-invalid={Boolean(errors.children)}
             aria-describedby="children-error"
           />
@@ -155,6 +186,7 @@ export const TripSearchForm = () => {
             placeholder="2500"
             value={values.budget}
             onChange={(event) => updateValue("budget", event.target.value)}
+            disabled={isSubmitting}
             aria-invalid={Boolean(errors.budget)}
             aria-describedby="budget-error"
           />
@@ -166,6 +198,7 @@ export const TripSearchForm = () => {
             name="currency"
             value={values.currency}
             onChange={(event) => updateValue("currency", event.target.value)}
+            disabled={isSubmitting}
             aria-invalid={Boolean(errors.currency)}
             aria-describedby="currency-error"
           >
@@ -183,8 +216,16 @@ export const TripSearchForm = () => {
           LazyTrip will not make bookings at this stage. You stay in control before anything is
           reserved.
         </p>
-        <Button type="submit">Start planning</Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Checking trip..." : "Start planning"}
+        </Button>
       </div>
+
+      {submitError ? (
+        <p className="mt-5 rounded-2xl bg-coral-50 px-4 py-3 text-sm font-semibold text-coral-700">
+          {submitError}
+        </p>
+      ) : null}
 
       {confirmation ? (
         <p className="mt-5 rounded-2xl bg-coast-50 px-4 py-3 text-sm font-semibold text-coast-700">

@@ -6,7 +6,7 @@ Tagline: Tell us where. We'll plan the rest.
 
 ## Current Prototype Scope
 
-This prototype contains a trip-search homepage, a slide-style travel-preferences survey, a simulated generation page, and a read-only demo itinerary. It does not call APIs, save data to a backend, or generate a live itinerary.
+This prototype contains a trip-search homepage, a slide-style travel-preferences survey, a simulated generation page, and a read-only demo itinerary. The homepage validates trip-search details with the FastAPI backend before opening preferences. It does not save data to a backend or generate a live itinerary.
 
 ## Technology
 
@@ -33,6 +33,14 @@ npm install
 ```bash
 npm run dev
 ```
+
+The frontend reads the backend URL from `.env.local`. For local development:
+
+```text
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
+```
+
+Change this value if the backend runs somewhere else. Restart the Next.js dev server after editing `.env.local`.
 
 ## Build
 
@@ -73,7 +81,8 @@ src/data/mock-itinerary.ts
 - Responsive trip-search form
 - Accessible labels and keyboard-usable controls
 - Validation for required locations, dates, traveller counts, and optional budget
-- Session storage handoff from the homepage to `/plan/preferences`
+- Backend trip preview validation before navigating from the homepage to `/plan/preferences`
+- Session storage handoff from the backend-normalized trip preview to `/plan/preferences`
 - Homepage restoration from saved trip-search values where practical
 - Travel-preferences form with trip summary, guided-experience options, and validation
 - Simulated planning progress at `/plan/generating`
@@ -82,19 +91,19 @@ src/data/mock-itinerary.ts
 - Cost summary and important mock-data notes
 - Activity locking, change requests, removal, and undo on itinerary activities
 - Overall itinerary follow-up comment box
-- Development console logging for submitted trip-search data and saved preferences
 
 ## Temporary Storage
 
 Planning-session data is stored in `sessionStorage` for the current browser tab:
 
 - `lazytrip.tripSearch` stores valid trip-search details.
+- `lazytrip.tripPlanningSession` stores the backend preview `sessionId` and normalized trip details.
 - `lazytrip.tripPreferences` stores saved travel preferences.
 - `lazytrip.itineraryItemStates` stores locked, removed, and change-requested item states.
 - `lazytrip.itineraryFeedback` stores pending or cancelled change-request records.
 - `lazytrip.itineraryOverallFeedback` stores the overall follow-up comment for the draft itinerary.
 
-No information is sent to a backend, database, API route, or external service.
+Trip-search details are sent to the local FastAPI backend preview endpoint for validation. The backend returns a generated `sessionId` and normalized trip details, but does not persist them yet.
 
 Itinerary source data stays separate from user interaction state:
 
@@ -124,7 +133,7 @@ Values such as origin, destination, dates, travellers, budget, selected pace, an
 - Real itinerary generation
 - Applying requested itinerary changes
 - AI regeneration from feedback
-- Backend, database, or API routes
+- Backend persistence
 - Authentication
 - AI or LLM integration
 - Maps

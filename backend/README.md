@@ -15,6 +15,23 @@ The trips preview endpoint validates and normalizes homepage trip-search details
 
 It does not include persisted trips, itineraries, authentication, database access, LLM integration, travel providers, background jobs, Docker, or deployment configuration.
 
+## CORS
+
+The API allows local frontend requests from:
+
+```text
+http://localhost:3000
+http://127.0.0.1:3000
+```
+
+Override this with a comma-separated value:
+
+```text
+LAZYTRIP_ALLOWED_FRONTEND_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+```
+
+CORS credentials are disabled because this integration does not use cookies or authenticated browser requests yet.
+
 ## Technology
 
 - Python 3.12+

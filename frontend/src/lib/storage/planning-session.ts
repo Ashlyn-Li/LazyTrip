@@ -1,6 +1,13 @@
-import type { TripPreferences, TripSearchData, TripSearchFormValues } from "@/types/trip";
+import type {
+  TripPlanningSession,
+  TripPreferences,
+  TripPreviewResponse,
+  TripSearchData,
+  TripSearchFormValues
+} from "@/types/trip";
 
 const tripSearchKey = "lazytrip.tripSearch";
+const tripPlanningSessionKey = "lazytrip.tripPlanningSession";
 const tripPreferencesKey = "lazytrip.tripPreferences";
 
 const canUseSessionStorage = () => typeof window !== "undefined" && Boolean(window.sessionStorage);
@@ -37,11 +44,35 @@ export const saveTripSearchData = (tripSearchData: TripSearchData) => {
 
 export const loadTripSearchData = () => readJson<TripSearchData>(tripSearchKey);
 
+export const tripPreviewResponseToPlanningSession = (
+  response: TripPreviewResponse
+): TripPlanningSession => ({
+  sessionId: response.session_id,
+  trip: {
+    origin: response.trip.origin,
+    destination: response.trip.destination,
+    departure_date: response.trip.departure_date,
+    return_date: response.trip.return_date,
+    duration_days: response.trip.duration_days,
+    adults: response.trip.adults,
+    children: response.trip.children,
+    total_travellers: response.trip.total_travellers,
+    budget: response.trip.budget === null ? undefined : response.trip.budget,
+    currency: response.trip.currency
+  }
+});
+
+export const saveTripPlanningSession = (planningSession: TripPlanningSession) => {
+  writeJson(tripPlanningSessionKey, planningSession);
+};
+
+export const loadTripPlanningSession = () => readJson<TripPlanningSession>(tripPlanningSessionKey);
+
 export const tripSearchDataToFormValues = (tripSearchData: TripSearchData): TripSearchFormValues => ({
   origin: tripSearchData.origin,
   destination: tripSearchData.destination,
-  departureDate: tripSearchData.departureDate,
-  returnDate: tripSearchData.returnDate,
+  departure_date: tripSearchData.departure_date,
+  return_date: tripSearchData.return_date,
   adults: String(tripSearchData.adults),
   children: String(tripSearchData.children),
   budget: tripSearchData.budget === undefined ? "" : String(tripSearchData.budget),

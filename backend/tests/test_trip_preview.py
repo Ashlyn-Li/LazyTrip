@@ -146,3 +146,33 @@ def test_preview_creates_no_file_or_database_state() -> None:
     after_paths = {path for path in Path(".").iterdir()}
     assert response.status_code == 200
     assert after_paths == before_paths
+
+
+def test_preview_cors_allows_local_frontend_origin() -> None:
+    response = client.options(
+        "/api/v1/trips/preview",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "Content-Type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert "POST" in response.headers["access-control-allow-methods"]
+    assert "Content-Type" in response.headers["access-control-allow-headers"]
+    assert "access-control-allow-credentials" not in response.headers
+
+
+def test_preview_cors_does_not_allow_unconfigured_origin() -> None:
+    response = client.options(
+        "/api/v1/trips/preview",
+        headers={
+            "Origin": "https://example.com",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "Content-Type",
+        },
+    )
+
+    assert "access-control-allow-origin" not in response.headers

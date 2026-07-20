@@ -25,7 +25,7 @@ export const TripSummary = ({ tripSearchData }: TripSummaryProps) => {
         <div>
           <dt className="font-bold text-ink">Dates</dt>
           <dd>
-            {tripSearchData.departureDate} to {tripSearchData.returnDate}
+            {tripSearchData.departure_date} to {tripSearchData.return_date}
           </dd>
         </div>
         <div>
