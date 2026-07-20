@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { AppHeader } from "@/components/layout/app-header";
@@ -11,7 +11,14 @@ import { PreferenceOptions } from "@/components/trip-preferences/preference-opti
 import { SurveyProgress } from "@/components/trip-preferences/survey-progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { loadTripPreferences, loadTripSearchData, saveTripPreferences } from "@/lib/storage/planning-session";
+import { ApiError } from "@/lib/api/client";
+import { previewTripPreferences } from "@/lib/api/trips";
+import {
+  loadTripPreferences,
+  loadTripSearchData,
+  saveTripPreferences,
+  tripPreferencesPreviewResponseToPreferences
+} from "@/lib/storage/planning-session";
 import { hasTripPreferencesErrors, validateTripPreferences } from "@/lib/validation/trip-preferences";
 import type {
   AccommodationStyle,
@@ -100,13 +107,143 @@ const loadNormalizedPreferences = (): TripPreferences => ({
   ...loadTripPreferences()
 });
 
+const backendFieldSlideMap: Record<string, number> = {
+  pace: 0,
+  interests: 1,
+  explorationStyle: 2,
+  exploration_style: 2,
+  guidePreference: 2,
+  guide_preference: 2,
+  guidedActivityTypes: 2,
+  guided_activity_types: 2,
+  accommodationStyle: 3,
+  accommodation_style: 3,
+  transportModes: 3,
+  transport_modes: 3,
+  preferredStartTime: 3,
+  preferred_start_time: 3,
+  freeTimeLevel: 3,
+  free_time_level: 3,
+  dietaryRequirements: 4,
+  dietary_requirements: 4,
+  accessibilityRequirements: 4,
+  accessibility_requirements: 4,
+  mustSeePlaces: 4,
+  must_see_places: 4,
+  thingsToAvoid: 4,
+  things_to_avoid: 4,
+  additionalComments: 4,
+  additional_comments: 4
+};
+
+const getBackendErrorFields = (details: unknown): string[] => {
+  if (!details || typeof details !== "object" || !("detail" in details)) {
+    return [];
+  }
+
+  const detail = (details as { detail: unknown }).detail;
+
+  if (!Array.isArray(detail)) {
+    return [];
+  }
+
+  return detail.flatMap((item) => {
+    if (!item || typeof item !== "object" || !("loc" in item)) {
+      return [];
+    }
+
+    const loc = (item as { loc: unknown }).loc;
+
+    if (!Array.isArray(loc)) {
+      return [];
+    }
+
+    return loc.filter((locPart): locPart is string => typeof locPart === "string");
+  });
+};
+
+const getBackendValidationMessages = (details: unknown): string[] => {
+  if (!details || typeof details !== "object" || !("detail" in details)) {
+    return [];
+  }
+
+  const detail = (details as { detail: unknown }).detail;
+
+  if (!Array.isArray(detail)) {
+    return typeof detail === "string" ? [detail] : [];
+  }
+
+  return detail.flatMap((item) => {
+    if (!item || typeof item !== "object" || !("msg" in item)) {
+      return [];
+    }
+
+    const message = (item as { msg: unknown }).msg;
+
+    return typeof message === "string" ? [message.replace(/^Value error,\s*/, "")] : [];
+  });
+};
+
+const getEarliestErrorSlide = (fields: string[]) =>
+  fields.reduce<number | null>((earliestSlide, field) => {
+    const fieldSlide = backendFieldSlideMap[field];
+
+    if (fieldSlide === undefined) {
+      return earliestSlide;
+    }
+
+    return earliestSlide === null ? fieldSlide : Math.min(earliestSlide, fieldSlide);
+  }, null);
+
+const getEarliestLocalErrorSlide = (errors: ReturnType<typeof validateTripPreferences>) =>
+  getEarliestErrorSlide(Object.keys(errors));
+
+const getPreferencesApiErrorMessage = (error: unknown) => {
+  if (!(error instanceof ApiError)) {
+    return "LazyTrip could not check your preferences right now. Please try again.";
+  }
+
+  if (error.code === "network_error" || error.code === "missing_api_base_url") {
+    return "We couldn't connect to LazyTrip. Check that the backend is running and try again.";
+  }
+
+  if (error.code === "request_timeout") {
+    return "LazyTrip took too long to check your preferences. Please try again.";
+  }
+
+  if (error.status === 400 || error.status === 422) {
+    const validationMessages = getBackendValidationMessages(error.details);
+
+    return validationMessages[0] ?? "Please check your travel preferences.";
+  }
+
+  return "LazyTrip could not check your preferences right now. Please try again.";
+};
+
 export const PreferencesSurvey = () => {
   const router = useRouter();
-  const [tripSearchData] = useState(() => loadTripSearchData());
-  const [preferences, setPreferences] = useState<TripPreferences>(() => loadNormalizedPreferences());
+  const [hasLoadedClientState, setHasLoadedClientState] = useState(false);
+  const [tripSearchData, setTripSearchData] = useState<ReturnType<typeof loadTripSearchData>>(null);
+  const [preferences, setPreferences] = useState<TripPreferences>(defaultPreferences);
   const [slideIndex, setSlideIndex] = useState(0);
-  const [errors, setErrors] = useState(() => validateTripPreferences(loadNormalizedPreferences()));
+  const [errors, setErrors] = useState(() => validateTripPreferences(defaultPreferences));
   const [savedMessage, setSavedMessage] = useState("");
+  const [apiError, setApiError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const apiErrorRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const loadClientStateTimeout = window.setTimeout(() => {
+      const loadedPreferences = loadNormalizedPreferences();
+
+      setTripSearchData(loadTripSearchData());
+      setPreferences(loadedPreferences);
+      setErrors(validateTripPreferences(loadedPreferences));
+      setHasLoadedClientState(true);
+    }, 0);
+
+    return () => window.clearTimeout(loadClientStateTimeout);
+  }, []);
 
   const summaryTitle = useMemo(() => {
     if (!tripSearchData) {
@@ -120,6 +257,7 @@ export const PreferencesSurvey = () => {
     setPreferences((currentPreferences) => ({ ...currentPreferences, ...nextPreferences }));
     setErrors({});
     setSavedMessage("");
+    setApiError("");
   };
 
   const toggleInterest = (interest: TripInterest) => {
@@ -147,7 +285,7 @@ export const PreferencesSurvey = () => {
   };
 
   const validateCurrentSlide = () => {
-    if (slideIndex !== 1) {
+    if (![1, 2, 3].includes(slideIndex)) {
       return true;
     }
 
@@ -168,17 +306,29 @@ export const PreferencesSurvey = () => {
   const goBack = () => {
     setErrors({});
     setSavedMessage("");
+    setApiError("");
     setSlideIndex((currentSlide) => Math.max(0, currentSlide - 1));
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    if (apiError) {
+      apiErrorRef.current?.focus();
+    }
+  }, [apiError, slideIndex]);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
 
     const nextErrors = validateTripPreferences(preferences);
     setErrors(nextErrors);
+    setApiError("");
 
     if (hasTripPreferencesErrors(nextErrors)) {
-      setSlideIndex(1);
+      setSlideIndex(getEarliestLocalErrorSlide(nextErrors) ?? 1);
       setSavedMessage("");
       return;
     }
@@ -189,12 +339,43 @@ export const PreferencesSurvey = () => {
       guidedActivityTypes: usesGuides(preferences.explorationStyle) ? preferences.guidedActivityTypes : []
     };
 
-    saveTripPreferences(finalPreferences);
-    console.log("TripPreferences", finalPreferences);
-    setPreferences(finalPreferences);
-    setSavedMessage("");
-    router.push("/plan/generating");
+    setIsSubmitting(true);
+
+    try {
+      const previewResponse = await previewTripPreferences(finalPreferences);
+      const normalizedPreferences =
+        tripPreferencesPreviewResponseToPreferences(previewResponse);
+
+      saveTripPreferences(normalizedPreferences);
+      setPreferences(normalizedPreferences);
+      setSavedMessage("");
+      router.push("/plan/generating");
+    } catch (error) {
+      const backendFields = error instanceof ApiError ? getBackendErrorFields(error.details) : [];
+      const earliestErrorSlide = getEarliestErrorSlide(backendFields);
+
+      if (earliestErrorSlide !== null) {
+        setSlideIndex(earliestErrorSlide);
+      }
+
+      setApiError(getPreferencesApiErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (!hasLoadedClientState) {
+    return (
+      <main className="min-h-screen bg-[#fbf6fb] text-ink">
+        <AppHeader />
+        <PageContainer>
+          <section className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center text-center">
+            <h1 className="text-4xl font-bold">Loading your trip plan</h1>
+          </section>
+        </PageContainer>
+      </main>
+    );
+  }
 
   if (!tripSearchData) {
     return (
@@ -280,12 +461,17 @@ export const PreferencesSurvey = () => {
                     />
                   </section>
                   {usesGuides(preferences.explorationStyle) ? (
-                    <GuidedExperienceOptions
-                      guidePreference={preferences.guidePreference}
-                      guidedActivityTypes={preferences.guidedActivityTypes}
-                      onGuidePreferenceChange={(guidePreference: GuidePreference) => updatePreferences({ guidePreference })}
-                      onActivityToggle={toggleGuidedActivity}
-                    />
+                    <div>
+                      <GuidedExperienceOptions
+                        guidePreference={preferences.guidePreference}
+                        guidedActivityTypes={preferences.guidedActivityTypes}
+                        onGuidePreferenceChange={(guidePreference: GuidePreference) => updatePreferences({ guidePreference })}
+                        onActivityToggle={toggleGuidedActivity}
+                      />
+                      <p className="mt-2 min-h-5 text-sm font-semibold text-coral-700" aria-live="polite">
+                        {errors.guidePreference}
+                      </p>
+                    </div>
                   ) : null}
                 </div>
               ) : null}
@@ -304,6 +490,9 @@ export const PreferencesSurvey = () => {
                   <section>
                     <h2 className="mb-3 text-lg font-bold text-ink">Transport preference</h2>
                     <PreferenceOptions options={transportOptions} selectedValues={preferences.transportModes} onToggle={toggleTransport} columns="four" />
+                    <p className="mt-2 min-h-5 text-sm font-semibold text-coral-700" aria-live="polite">
+                      {errors.transportModes}
+                    </p>
                   </section>
                   <section className="grid gap-4 sm:grid-cols-2">
                     <label className="space-y-2 text-sm font-bold text-ink">
@@ -365,6 +554,7 @@ export const PreferencesSurvey = () => {
                   className="border border-coast-100 bg-pink-400 text-coast-700 hover:bg-coast-50"
                   type="button"
                   onClick={goBack}
+                  disabled={isSubmitting}
                 >
                   Previous question
                 </Button>
@@ -372,12 +562,32 @@ export const PreferencesSurvey = () => {
                 <span aria-hidden="true" />
               )}
               {slideIndex === totalSlides - 1 ? (
-                <Button type="submit">Create my trip</Button>
+                <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+                  {isSubmitting ? "Checking your preferences..." : "Create my trip"}
+                </Button>
               ) : (
-                <Button type="button" onClick={goNext}>
+                <Button type="button" onClick={goNext} disabled={isSubmitting}>
                   Continue
                 </Button>
               )}
+            </div>
+
+            <div className="mt-5" aria-live="polite">
+              {isSubmitting ? (
+                <p className="rounded-2xl bg-coast-50 px-4 py-3 text-sm font-semibold text-coast-700">
+                  Checking your preferences before planning starts.
+                </p>
+              ) : null}
+
+              {apiError ? (
+                <p
+                  ref={apiErrorRef}
+                  className="rounded-2xl bg-coral-50 px-4 py-3 text-sm font-semibold text-coral-700"
+                  tabIndex={-1}
+                >
+                  {apiError}
+                </p>
+              ) : null}
             </div>
 
             {savedMessage ? (

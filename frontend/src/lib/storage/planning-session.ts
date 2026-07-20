@@ -1,6 +1,7 @@
 import type {
   TripPlanningSession,
   TripPreferences,
+  TripPreferencesPreviewResponse,
   TripPreviewResponse,
   TripSearchData,
   TripSearchFormValues
@@ -82,5 +83,9 @@ export const tripSearchDataToFormValues = (tripSearchData: TripSearchData): Trip
 export const saveTripPreferences = (preferences: TripPreferences) => {
   writeJson(tripPreferencesKey, preferences);
 };
+
+export const tripPreferencesPreviewResponseToPreferences = (
+  response: TripPreferencesPreviewResponse
+): TripPreferences => response.preferences;
 
 export const loadTripPreferences = () => readJson<TripPreferences>(tripPreferencesKey);

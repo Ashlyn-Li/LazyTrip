@@ -2,8 +2,17 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.modules.trips.schemas import TripPreviewRequest, TripPreviewResponse
-from app.modules.trips.service import TripPreviewError, create_trip_preview
+from app.modules.trips.schemas import (
+    TripPreferencesPreviewRequest,
+    TripPreferencesPreviewResponse,
+    TripPreviewRequest,
+    TripPreviewResponse,
+)
+from app.modules.trips.service import (
+    TripPreviewError,
+    create_preferences_preview,
+    create_trip_preview,
+)
 
 router = APIRouter(prefix="/trips", tags=["trips"])
 
@@ -28,4 +37,22 @@ def preview_trip(request: TripPreviewRequest) -> TripPreviewResponse:
         session_id=str(uuid4()),
         message="Trip information is valid",
         trip=trip_preview,
+    )
+
+
+@router.post(
+    "/preferences/preview",
+    response_model=TripPreferencesPreviewResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Preview validated trip preferences",
+)
+def preview_trip_preferences(
+    request: TripPreferencesPreviewRequest,
+) -> TripPreferencesPreviewResponse:
+    preferences, summary = create_preferences_preview(request)
+
+    return TripPreferencesPreviewResponse(
+        message="Trip preferences are valid",
+        preferences=preferences,
+        summary=summary,
     )

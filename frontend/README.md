@@ -6,7 +6,7 @@ Tagline: Tell us where. We'll plan the rest.
 
 ## Current Prototype Scope
 
-This prototype contains a trip-search homepage, a slide-style travel-preferences survey, a simulated generation page, and a read-only demo itinerary. The homepage validates trip-search details with the FastAPI backend before opening preferences. It does not save data to a backend or generate a live itinerary.
+This prototype contains a trip-search homepage, a slide-style travel-preferences survey, a simulated generation page, and a read-only demo itinerary. The homepage validates trip-search details with the FastAPI backend before opening preferences, and the preferences survey validates with the backend before opening generation. It does not save data to a backend or generate a live itinerary.
 
 ## Technology
 
@@ -85,6 +85,7 @@ src/data/mock-itinerary.ts
 - Session storage handoff from the backend-normalized trip preview to `/plan/preferences`
 - Homepage restoration from saved trip-search values where practical
 - Travel-preferences form with trip summary, guided-experience options, and validation
+- Backend preferences preview validation before navigating from `/plan/preferences` to `/plan/generating`
 - Simulated planning progress at `/plan/generating`
 - Read-only mock itinerary at `/trip/demo`
 - Three selectable itinerary days rendered from structured mock data
@@ -103,7 +104,28 @@ Planning-session data is stored in `sessionStorage` for the current browser tab:
 - `lazytrip.itineraryFeedback` stores pending or cancelled change-request records.
 - `lazytrip.itineraryOverallFeedback` stores the overall follow-up comment for the draft itinerary.
 
-Trip-search details are sent to the local FastAPI backend preview endpoint for validation. The backend returns a generated `sessionId` and normalized trip details, but does not persist them yet.
+Trip-search details are sent to `POST /api/v1/trips/preview` for validation. The backend returns a generated `sessionId` and normalized trip details, but does not persist them yet.
+
+Travel preferences are sent to `POST /api/v1/trips/preferences/preview` when the user selects `Create my trip`. The frontend waits for one backend response, saves only the normalized preferences on success, and stays on the survey when the backend reports validation, network, timeout, or server errors.
+
+Preferences API field names intentionally match the frontend `TripPreferences` shape:
+
+```text
+pace, interests, explorationStyle, transportModes, accommodationStyle,
+preferredStartTime, freeTimeLevel, guidePreference, guidedActivityTypes,
+dietaryRequirements, accessibilityRequirements, mustSeePlaces,
+thingsToAvoid, additionalComments
+```
+
+Backend validation errors return the user to the earliest affected survey slide:
+
+```text
+pace -> pace
+interests -> interests
+explorationStyle, guidePreference, guidedActivityTypes -> exploration
+transportModes, accommodationStyle, preferredStartTime, freeTimeLevel -> comfort
+dietaryRequirements, accessibilityRequirements, mustSeePlaces, thingsToAvoid, additionalComments -> requirements
+```
 
 Itinerary source data stays separate from user interaction state:
 
@@ -145,7 +167,7 @@ Values such as origin, destination, dates, travellers, budget, selected pace, an
 
 - Stored data is temporary and scoped to the current browser tab.
 - Additional comments and fixed plans are saved exactly as entered, but not interpreted.
-- Preferences do not yet feed into itinerary generation or constraint review.
+- Preferences are backend-validated before generation, but do not yet feed into real itinerary generation or constraint review.
 - The demo itinerary is static mock data.
 - Routing, opening hours, availability, and prices are not verified.
 - Removing an activity does not recalculate later activities or travel segments.
@@ -153,4 +175,4 @@ Values such as origin, destination, dates, travellers, budget, selected pace, an
 
 ## Suggested Next Step
 
-> Add a mock change-review screen that previews all requested itinerary changes before connecting the workflow to an LLM.
+> Add PostgreSQL, migrations, and trip persistence without changing the two existing preview endpoints.

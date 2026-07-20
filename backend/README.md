@@ -9,8 +9,113 @@ This document describes the intended backend design. The backend should be built
 ## Current status
 
 **Stage:** Backend planning  
-**First milestone:** A running FastAPI service with a health endpoint and a validated trip-preview endpoint  
+**Current milestone:** A running FastAPI service with health, trip-preview, and preferences-preview endpoints  
 **Not yet included:** Database, authentication, LLM calls, maps, hotels, background workers, or production deployment
+
+## Implemented endpoints
+
+```http
+GET /api/v1/health
+POST /api/v1/trips/preview
+POST /api/v1/trips/preferences/preview
+```
+
+The preferences-preview endpoint remains inside the Trips module because these preferences belong to a specific trip journey. It validates and normalizes the current frontend preferences survey, returns a typed preview, and does not save anything.
+
+### Preferences preview
+
+```http
+POST /api/v1/trips/preferences/preview
+Content-Type: application/json
+```
+
+Example request:
+
+```json
+{
+  "pace": "balanced",
+  "interests": ["food", "local-culture", "photography", "shopping"],
+  "explorationStyle": "independent-with-guides",
+  "transportModes": ["walking", "public-transport"],
+  "accommodationStyle": "boutique",
+  "preferredStartTime": "10:00",
+  "freeTimeLevel": "some",
+  "guidePreference": "small-group",
+  "guidedActivityTypes": ["food-tour", "culture-history-tour"],
+  "dietaryRequirements": "",
+  "accessibilityRequirements": "",
+  "mustSeePlaces": "teamLab Planets",
+  "thingsToAvoid": "",
+  "additionalComments": "teamLab Planets on day 2 at 1 PM"
+}
+```
+
+Example response:
+
+```json
+{
+  "message": "Trip preferences are valid",
+  "preferences": {
+    "pace": "balanced",
+    "interests": ["food", "local-culture", "photography", "shopping"],
+    "explorationStyle": "independent-with-guides",
+    "transportModes": ["walking", "public-transport"],
+    "accommodationStyle": "boutique",
+    "preferredStartTime": "10:00",
+    "freeTimeLevel": "some",
+    "guidePreference": "small-group",
+    "guidedActivityTypes": ["food-tour", "culture-history-tour"],
+    "dietaryRequirements": "",
+    "accessibilityRequirements": "",
+    "mustSeePlaces": "teamLab Planets",
+    "thingsToAvoid": "",
+    "additionalComments": "teamLab Planets on day 2 at 1 PM"
+  },
+  "summary": {
+    "interest_count": 4,
+    "uses_guided_experiences": true
+  }
+}
+```
+
+Preference JSON field names intentionally match the current frontend `TripPreferences` type, so no frontend API mapping is needed for this endpoint. Python code still uses snake_case internally.
+
+Frontend/backend field mapping:
+
+```text
+pace                      -> pace
+interests                 -> interests
+explorationStyle          -> explorationStyle
+transportModes            -> transportModes
+accommodationStyle        -> accommodationStyle
+preferredStartTime        -> preferredStartTime
+freeTimeLevel             -> freeTimeLevel
+guidePreference           -> guidePreference
+guidedActivityTypes       -> guidedActivityTypes
+dietaryRequirements       -> dietaryRequirements
+accessibilityRequirements -> accessibilityRequirements
+mustSeePlaces             -> mustSeePlaces
+thingsToAvoid             -> thingsToAvoid
+additionalComments        -> additionalComments
+```
+
+Validation and normalization:
+
+- `pace`, `explorationStyle`, `freeTimeLevel`, `guidePreference`, `accommodationStyle`, interests, transport modes, and guided activity types must be supported frontend values.
+- At least one interest is required.
+- At least one transport mode is required.
+- Duplicate interests and duplicate transport modes are removed while preserving the selected order.
+- `guidePreference` is required when `explorationStyle` uses guided experiences.
+- If `explorationStyle` is `mostly-independent`, `guidePreference` is normalized to `null` and `guidedActivityTypes` is normalized to an empty list.
+- Optional text fields are trimmed; whitespace-only text becomes an empty string.
+- Optional text fields are limited to 1000 characters.
+- Unexpected fields are rejected.
+- Free text is not semantically interpreted yet.
+- No preferences data is saved.
+
+## Recommended next milestone
+
+Add PostgreSQL, migrations, and trip persistence without changing the two existing preview endpoints.
 
 ## Architecture
 

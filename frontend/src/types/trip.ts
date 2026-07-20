@@ -93,3 +93,12 @@ export type TripPreferences = {
   thingsToAvoid: string;
   additionalComments: string;
 };
+
+export type TripPreferencesPreviewResponse = {
+  message: "Trip preferences are valid";
+  preferences: TripPreferences;
+  summary: {
+    interest_count: number;
+    uses_guided_experiences: boolean;
+  };
+};
