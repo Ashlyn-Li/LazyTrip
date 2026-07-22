@@ -44,16 +44,16 @@ export const validateTripSearch = (values: TripSearchFormValues): ValidationResu
     errors.destination = "Enter a destination.";
   }
 
-  if (!values.departureDate) {
-    errors.departureDate = "Choose a departure date.";
+  if (!values.departure_date) {
+    errors.departure_date = "Choose a departure date.";
   }
 
-  if (!values.returnDate) {
-    errors.returnDate = "Choose a return date.";
+  if (!values.return_date) {
+    errors.return_date = "Choose a return date.";
   }
 
-  if (values.departureDate && values.returnDate && values.returnDate <= values.departureDate) {
-    errors.returnDate = "Return date must be after the departure date.";
+  if (values.departure_date && values.return_date && values.return_date <= values.departure_date) {
+    errors.return_date = "Return date must be after the departure date.";
   }
 
   if (!Number.isFinite(adults) || adults < 1) {
@@ -82,8 +82,8 @@ export const validateTripSearch = (values: TripSearchFormValues): ValidationResu
     data: {
       origin,
       destination,
-      departureDate: values.departureDate,
-      returnDate: values.returnDate,
+      departure_date: values.departure_date,
+      return_date: values.return_date,
       adults,
       children,
       budget,

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { CostSummary } from "@/components/itinerary/cost-summary";
 import { DaySelector } from "@/components/itinerary/day-selector";
@@ -13,7 +13,11 @@ import { OverallFeedbackBox } from "@/components/itinerary/overall-feedback-box"
 import { AppHeader } from "@/components/layout/app-header";
 import { PageContainer } from "@/components/layout/page-container";
 import { mockItinerary } from "@/data/mock-itinerary";
-import { loadTripPreferences, loadTripSearchData } from "@/lib/storage/planning-session";
+import {
+  loadGeneratedItinerary,
+  loadTripPreferences,
+  loadTripSearchData
+} from "@/lib/storage/planning-session";
 import {
   cancelChangeRequest,
   findFeedbackForActivity,
@@ -35,18 +39,35 @@ import type {
 } from "@/types/itinerary";
 
 export const DemoItinerary = () => {
-  const [tripSearchData] = useState(() => loadTripSearchData());
-  const [preferences] = useState(() => loadTripPreferences());
+  const [hasLoadedClientState, setHasLoadedClientState] = useState(false);
+  const [tripSearchData, setTripSearchData] = useState<ReturnType<typeof loadTripSearchData>>(null);
+  const [preferences, setPreferences] = useState<ReturnType<typeof loadTripPreferences>>(null);
+  const [generatedItinerary, setGeneratedItinerary] = useState(() => mockItinerary);
   const [selectedDay, setSelectedDay] = useState(1);
-  const [itemStates, setItemStates] = useState<ItineraryItemUserState[]>(() => loadItineraryItemStates());
-  const [feedbackRecords, setFeedbackRecords] = useState<ItineraryFeedback[]>(() => loadItineraryFeedback());
-  const [overallFeedback, setOverallFeedback] = useState(() => loadOverallFeedback());
+  const [itemStates, setItemStates] = useState<ItineraryItemUserState[]>([]);
+  const [feedbackRecords, setFeedbackRecords] = useState<ItineraryFeedback[]>([]);
+  const [overallFeedback, setOverallFeedback] = useState<ReturnType<typeof loadOverallFeedback>>(null);
   const [activeChangeRequestId, setActiveChangeRequestId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Record<string, string>>({});
+  const itinerary = generatedItinerary;
+
+  useEffect(() => {
+    const loadClientStateTimeout = window.setTimeout(() => {
+      setTripSearchData(loadTripSearchData());
+      setPreferences(loadTripPreferences());
+      setGeneratedItinerary(loadGeneratedItinerary() ?? mockItinerary);
+      setItemStates(loadItineraryItemStates());
+      setFeedbackRecords(loadItineraryFeedback());
+      setOverallFeedback(loadOverallFeedback());
+      setHasLoadedClientState(true);
+    }, 0);
+
+    return () => window.clearTimeout(loadClientStateTimeout);
+  }, []);
 
   const selectedItineraryDay = useMemo(
-    () => mockItinerary.days.find((day) => day.dayNumber === selectedDay) ?? mockItinerary.days[0],
-    [selectedDay]
+    () => itinerary.days.find((day) => day.dayNumber === selectedDay) ?? itinerary.days[0],
+    [itinerary.days, selectedDay]
   );
 
   const setNotification = (itemId: string, message: string) => {
@@ -98,7 +119,7 @@ export const DemoItinerary = () => {
     const existingFeedback = getRenderedFeedback(activity.id);
     const nextFeedbackRecord: ItineraryFeedback = {
       id: existingFeedback?.id ?? `${activity.id}-${now}`,
-      itineraryId: mockItinerary.id,
+      itineraryId: itinerary.id,
       itineraryItemId: activity.id,
       action: input.action,
       reasons: input.reasons,
@@ -179,7 +200,7 @@ export const DemoItinerary = () => {
 
   const handleSaveOverallFeedback = (comment: string) => {
     const nextFeedback = {
-      itineraryId: mockItinerary.id,
+      itineraryId: itinerary.id,
       comment,
       updatedAt: new Date().toISOString()
     };
@@ -187,6 +208,19 @@ export const DemoItinerary = () => {
     setOverallFeedback(nextFeedback);
     saveOverallFeedback(nextFeedback);
   };
+
+  if (!hasLoadedClientState) {
+    return (
+      <main className="min-h-screen bg-[#fbf6fb] text-ink">
+        <AppHeader />
+        <PageContainer>
+          <section className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center text-center">
+            <h1 className="text-4xl font-bold">Loading your itinerary</h1>
+          </section>
+        </PageContainer>
+      </main>
+    );
+  }
 
   if (!tripSearchData || !preferences) {
     return (
@@ -213,20 +247,20 @@ export const DemoItinerary = () => {
       <AppHeader />
       <PageContainer>
         <div className="relative space-y-6 pb-12 pt-4">
-          <ItineraryHeader itinerary={mockItinerary} tripSearchData={tripSearchData} preferences={preferences} />
+          <ItineraryHeader itinerary={itinerary} tripSearchData={tripSearchData} preferences={preferences} />
           <FeedbackSummary lockedCount={lockedCount} changeRequestCount={changeRequestCount} removedCount={removedCount} />
           <section className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-sm">
             <h2 className="text-2xl font-bold text-ink">Trip overview</h2>
-            <p className="mt-3 text-base leading-7 text-slate-700">{mockItinerary.summary}</p>
+            <p className="mt-3 text-base leading-7 text-slate-700">{itinerary.summary}</p>
             <p className="mt-3 rounded-2xl bg-coast-50 px-4 py-3 text-sm font-semibold text-coast-700">
-              Hotel placeholder: {mockItinerary.hotelPlaceholder}
+              Hotel placeholder: {itinerary.hotelPlaceholder}
             </p>
           </section>
           <OverallFeedbackBox
             initialComment={overallFeedback?.comment ?? ""}
             onSave={handleSaveOverallFeedback}
           />
-          <DaySelector days={mockItinerary.days} selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+          <DaySelector days={itinerary.days} selectedDay={selectedDay} onSelectDay={setSelectedDay} />
           <DayTimeline
             day={selectedItineraryDay}
             activeChangeRequestId={activeChangeRequestId}
@@ -242,8 +276,8 @@ export const DemoItinerary = () => {
             onUndoRemove={handleUndoRemove}
           />
           <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
-            <CostSummary costSummary={mockItinerary.costSummary} />
-            <ItineraryNotes notes={mockItinerary.notes} />
+            <CostSummary costSummary={itinerary.costSummary} />
+            <ItineraryNotes notes={itinerary.notes} />
           </div>
         </div>
       </PageContainer>

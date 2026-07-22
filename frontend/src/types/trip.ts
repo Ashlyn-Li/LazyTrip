@@ -3,19 +3,46 @@ import type { CurrencyCode } from "@/lib/constants/currencies";
 export type TripSearchData = {
   origin: string;
   destination: string;
-  departureDate: string;
-  returnDate: string;
+  departure_date: string;
+  return_date: string;
   adults: number;
   children: number;
   budget?: number;
   currency: CurrencyCode;
 };
 
+export type TripPreviewData = TripSearchData & {
+  duration_days: number;
+  total_travellers: number;
+};
+
+export type TripPlanningSession = {
+  sessionId: string;
+  trip: TripPreviewData;
+};
+
+export type TripPreviewResponse = {
+  session_id: string;
+  message: "Trip information is valid";
+  trip: {
+    origin: string;
+    destination: string;
+    departure_date: string;
+    return_date: string;
+    duration_days: number;
+    adults: number;
+    children: number;
+    total_travellers: number;
+    budget: number | null;
+    currency: CurrencyCode;
+  };
+};
+
 export type TripSearchFormValues = {
   origin: string;
   destination: string;
-  departureDate: string;
-  returnDate: string;
+  departure_date: string;
+  return_date: string;
   adults: string;
   children: string;
   budget: string;
@@ -65,4 +92,13 @@ export type TripPreferences = {
   mustSeePlaces: string;
   thingsToAvoid: string;
   additionalComments: string;
+};
+
+export type TripPreferencesPreviewResponse = {
+  message: "Trip preferences are valid";
+  preferences: TripPreferences;
+  summary: {
+    interest_count: number;
+    uses_guided_experiences: boolean;
+  };
 };

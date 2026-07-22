@@ -39,7 +39,8 @@ export type ItineraryDay = {
 
 export type MockItinerary = {
   id: string;
-  status: "mock";
+  status: "mock" | "generated";
+  provider: "fake" | "openai";
   title: string;
   destination: string;
   summary: string;
@@ -55,6 +56,32 @@ export type MockItinerary = {
     total: Money;
   };
   notes: string[];
+};
+
+export type GeneratedItinerary = MockItinerary;
+
+export type ItineraryGenerationStatus =
+  | "queued"
+  | "validating"
+  | "collecting_data"
+  | "generating"
+  | "validating_output"
+  | "completed"
+  | "failed";
+
+export type ItineraryGenerationStartResponse = {
+  job_id: string;
+  status: ItineraryGenerationStatus;
+  status_url: string;
+};
+
+export type ItineraryGenerationStatusResponse = {
+  job_id: string;
+  status: ItineraryGenerationStatus;
+  progress: number;
+  message: string;
+  itinerary: GeneratedItinerary | null;
+  error: { code: string; message: string } | null;
 };
 
 export type FeedbackAction = "replace" | "reschedule" | "find-cheaper-option";

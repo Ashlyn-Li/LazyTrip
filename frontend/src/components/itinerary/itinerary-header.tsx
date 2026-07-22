@@ -44,7 +44,7 @@ export const ItineraryHeader = ({ itinerary, tripSearchData, preferences }: Itin
         <div>
           <dt className="font-bold text-ink">Travel dates</dt>
           <dd className="text-slate-700">
-            {tripSearchData.departureDate} to {tripSearchData.returnDate}
+            {tripSearchData.departure_date} to {tripSearchData.return_date}
           </dd>
         </div>
         <div>
