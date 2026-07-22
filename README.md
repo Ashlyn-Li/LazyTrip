@@ -28,6 +28,10 @@ Currently implemented:
 - Itinerary display, locking, removal, undo, and feedback placeholders.
 - Browser-session storage for the current planning journey.
 
+<p align="center">
+<img width="937" height="408" alt="image" src="https://github.com/user-attachments/assets/eee3f875-f21b-4e24-83b9-6a3f6640b88f" />
+</p>
+
 Not yet implemented:
 
 - User accounts or authentication.
