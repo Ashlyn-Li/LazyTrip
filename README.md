@@ -7,6 +7,10 @@ editable itinerary interface.
 
 > Tell us where. We'll plan the rest.
 
+<p align="center">
+      <img width="934" height="412" alt="image" src="https://github.com/user-attachments/assets/4c4656c8-6c51-4e62-b867-bea0c6f01830" />
+</p>
+
 ## Project status
 
 LazyTrip is a learning project and working local prototype, not a production booking platform.
