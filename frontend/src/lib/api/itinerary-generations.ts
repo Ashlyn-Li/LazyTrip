@@ -35,7 +35,8 @@ const hasItineraryShape = (value: unknown): value is GeneratedItinerary => {
 
   return (
     typeof value.id === "string" &&
-    value.status === "mock" &&
+    (value.status === "mock" || value.status === "generated") &&
+    (value.provider === "fake" || value.provider === "openai") &&
     typeof value.title === "string" &&
     typeof value.destination === "string" &&
     typeof value.summary === "string" &&
@@ -75,7 +76,10 @@ const validateStatusResponse = (
     response.progress < 0 ||
     response.progress > 100 ||
     typeof response.message !== "string" ||
-    (response.error !== null && typeof response.error !== "string")
+    (response.error !== null &&
+      (!isRecord(response.error) ||
+        typeof response.error.code !== "string" ||
+        typeof response.error.message !== "string"))
   ) {
     throw new Error("Malformed itinerary generation status response.");
   }

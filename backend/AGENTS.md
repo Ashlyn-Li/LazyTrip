@@ -35,6 +35,8 @@ Do not create these files before their responsibilities exist.
 - Itinerary providers must be accessed through a provider interface, not directly from routers.
 - Provider output must be validated before a generation job is marked completed.
 - Tests for generation use the fake provider; no real provider is active yet.
+- Real provider tests must mock the SDK and must not make billable API calls.
+- Prompt construction belongs outside routers and must delimit traveller comments as untrusted data.
 - Routes must not contain SQL, large prompts, or complete planning algorithms.
 - Routes must not call external itinerary providers directly.
 - Services must not expose raw provider responses to the frontend.

@@ -22,7 +22,7 @@ import type { ItineraryGenerationStatus } from "@/types/itinerary";
 import type { TripPreferences, TripSearchData } from "@/types/trip";
 
 const pollIntervalMs = 1400;
-const overallTimeoutMs = 60000;
+const overallTimeoutMs = 150000;
 
 type GenerationUiState =
   | "loading-session"
@@ -146,7 +146,10 @@ export const GenerationProgress = () => {
 
         if (statusResponse.status === "failed") {
           clearActiveItineraryGenerationJob();
-          fail("failed", "LazyTrip couldn't generate this draft. Please try again.");
+          fail(
+            "failed",
+            statusResponse.error?.message ?? "LazyTrip couldn't generate this draft. Please try again."
+          );
           return;
         }
 
@@ -273,8 +276,8 @@ export const GenerationProgress = () => {
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-coast-700">LazyTrip</p>
             <h1 className="mt-4 text-4xl font-bold leading-tight text-ink">We&apos;re planning your trip</h1>
             <p className="mt-4 text-lg leading-8 text-slate-700">
-              This fake generator shapes a mock itinerary from your saved choices. No live places, routes,
-              hotels, or prices are checked yet.
+              LazyTrip is creating an itinerary from your saved trip details and preferences. Places,
+              routes, availability, and prices may still require verification.
             </p>
             <div className="mt-8 space-y-3">
               <div className="flex items-center justify-between text-sm font-semibold text-slate-600">

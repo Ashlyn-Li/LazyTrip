@@ -39,6 +39,16 @@ VALID_GENERATION_REQUEST = {
         "thingsToAvoid": "",
         "additionalComments": "teamLab Planets on day 2 at 1 PM",
     },
+    "fixedEvents": [
+        {
+            "id": "d2-teamlab",
+            "title": "teamLab Planets",
+            "date": "2026-09-13",
+            "startTime": "13:00",
+            "endTime": "15:00",
+            "location": "Toyosu",
+        }
+    ],
 }
 
 
@@ -74,8 +84,10 @@ def test_status_endpoint_returns_progress_and_completes() -> None:
     assert final_body is not None
     assert final_body["progress"] == 100
     assert final_body["itinerary"]["status"] == "mock"
-    assert final_body["itinerary"]["days"][1]["items"][2]["id"] == "d2-teamlab"
-    assert final_body["itinerary"]["days"][1]["items"][2]["isFixed"] is True
+    fixed_item = next(
+        item for item in final_body["itinerary"]["days"][1]["items"] if item["id"] == "d2-teamlab"
+    )
+    assert fixed_item["isFixed"] is True
 
 
 def test_unknown_generation_job_returns_404() -> None:
@@ -125,6 +137,7 @@ def test_validator_rejects_duplicate_item_ids() -> None:
             itinerary,
             start_date=request.trip.departure_date,
             return_date=request.trip.return_date,
+            fixed_events=request.fixed_events,
         )
     except ItineraryValidationError:
         return
@@ -147,6 +160,7 @@ def test_validator_rejects_overlapping_activities() -> None:
             itinerary,
             start_date=request.trip.departure_date,
             return_date=request.trip.return_date,
+            fixed_events=request.fixed_events,
         )
     except ItineraryValidationError:
         return
@@ -180,7 +194,7 @@ def test_provider_failure_marks_job_failed() -> None:
             asyncio.run(asyncio.sleep(0.02))
 
         assert final_body is not None
-        assert final_body["error"] == "ITINERARY_GENERATION_FAILED"
+        assert final_body["error"]["code"] == "itinerary_generation_failed"
         assert final_body["itinerary"] is None
     finally:
         generation_service.generator = original_generator
@@ -196,6 +210,7 @@ def test_validator_rejects_missing_mock_label() -> None:
             itinerary,
             start_date=request.trip.departure_date,
             return_date=request.trip.return_date,
+            fixed_events=request.fixed_events,
         )
     except ItineraryValidationError:
         return

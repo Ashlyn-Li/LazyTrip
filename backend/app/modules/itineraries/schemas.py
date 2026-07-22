@@ -1,6 +1,7 @@
+from datetime import date
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.modules.trips.schemas import TripPreferencesPreviewRequest, TripPreviewRequest
 
@@ -13,6 +14,8 @@ GenerationStatus = Literal[
     "completed",
     "failed",
 ]
+
+ItineraryProvider = Literal["fake", "openai"]
 
 
 class Money(BaseModel):
@@ -35,11 +38,11 @@ class Money(BaseModel):
 
 
 class ItineraryActivity(BaseModel):
-    id: str
+    id: str = Field(min_length=1, max_length=80)
     type: Literal["activity", "meal", "guided-experience", "free-time"]
-    title: str
-    description: str
-    location: str
+    title: str = Field(min_length=1, max_length=120)
+    description: str = Field(min_length=1, max_length=500)
+    location: str = Field(min_length=1, max_length=160)
     start_time: str = Field(
         pattern=r"^\d{2}:\d{2}$",
         validation_alias="startTime",
@@ -60,7 +63,7 @@ class ItineraryActivity(BaseModel):
 
 
 class TravelSegment(BaseModel):
-    id: str
+    id: str = Field(min_length=1, max_length=80)
     type: Literal["travel"]
     transport_mode: Literal["walk", "public-transport", "taxi"] = Field(
         validation_alias="transportMode",
@@ -71,7 +74,7 @@ class TravelSegment(BaseModel):
         validation_alias="durationMinutes",
         serialization_alias="durationMinutes",
     )
-    description: str
+    description: str = Field(min_length=1, max_length=300)
 
 
 ItineraryDayItem = Annotated[ItineraryActivity | TravelSegment, Field(discriminator="type")]
@@ -84,9 +87,9 @@ class ItineraryDay(BaseModel):
         serialization_alias="dayNumber",
     )
     date: str
-    title: str
-    summary: str
-    items: list[ItineraryDayItem]
+    title: str = Field(min_length=1, max_length=120)
+    summary: str = Field(min_length=1, max_length=500)
+    items: list[ItineraryDayItem] = Field(min_length=1, max_length=12)
 
 
 class CostSummary(BaseModel):
@@ -101,12 +104,18 @@ class CostSummary(BaseModel):
 
 
 class GeneratedItinerary(BaseModel):
-    id: str
-    status: Literal["mock"]
-    title: str
-    destination: str
-    summary: str
-    time_zone: str = Field(validation_alias="timeZone", serialization_alias="timeZone")
+    id: str = Field(min_length=1, max_length=80)
+    status: Literal["mock", "generated"]
+    provider: ItineraryProvider
+    title: str = Field(min_length=1, max_length=140)
+    destination: str = Field(min_length=1, max_length=200)
+    summary: str = Field(min_length=1, max_length=1000)
+    time_zone: str = Field(
+        min_length=1,
+        max_length=80,
+        validation_alias="timeZone",
+        serialization_alias="timeZone",
+    )
     data_status_label: str = Field(
         validation_alias="dataStatusLabel",
         serialization_alias="dataStatusLabel",
@@ -120,7 +129,41 @@ class GeneratedItinerary(BaseModel):
         validation_alias="costSummary",
         serialization_alias="costSummary",
     )
-    notes: list[str]
+    notes: list[str] = Field(max_length=8)
+
+
+class GenerationJobError(BaseModel):
+    code: str
+    message: str
+
+
+class FixedEvent(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    id: str = Field(min_length=1, max_length=80)
+    title: str = Field(min_length=1, max_length=120)
+    date: date
+    start_time: str = Field(
+        pattern=r"^\d{2}:\d{2}$",
+        validation_alias="startTime",
+        serialization_alias="startTime",
+    )
+    end_time: str = Field(
+        pattern=r"^\d{2}:\d{2}$",
+        validation_alias="endTime",
+        serialization_alias="endTime",
+    )
+    location: str | None = Field(default=None, max_length=160)
+
+    @model_validator(mode="after")
+    def validate_time_window(self) -> "FixedEvent":
+        start_hour, start_minute = (int(value) for value in self.start_time.split(":"))
+        end_hour, end_minute = (int(value) for value in self.end_time.split(":"))
+        if start_hour > 23 or end_hour > 23 or start_minute > 59 or end_minute > 59:
+            raise ValueError("Fixed event times must be valid 24-hour times.")
+        if (end_hour, end_minute) <= (start_hour, start_minute):
+            raise ValueError("Fixed event end time must be after its start time.")
+        return self
 
 
 class ItineraryGenerationRequest(BaseModel):
@@ -128,6 +171,33 @@ class ItineraryGenerationRequest(BaseModel):
 
     trip: TripPreviewRequest
     preferences: TripPreferencesPreviewRequest
+    fixed_events: list[FixedEvent] = Field(
+        default_factory=list,
+        max_length=20,
+        validation_alias="fixedEvents",
+        serialization_alias="fixedEvents",
+    )
+
+    @model_validator(mode="after")
+    def validate_fixed_events(self) -> "ItineraryGenerationRequest":
+        seen_ids: set[str] = set()
+        windows_by_date: dict[date, list[tuple[str, str]]] = {}
+
+        for event in self.fixed_events:
+            if event.id in seen_ids:
+                raise ValueError("Fixed event IDs must be unique.")
+            seen_ids.add(event.id)
+
+            if event.date < self.trip.departure_date or event.date >= self.trip.return_date:
+                raise ValueError("Fixed events must fall within the trip dates.")
+
+            windows = windows_by_date.setdefault(event.date, [])
+            for start_time, end_time in windows:
+                if event.start_time < end_time and event.end_time > start_time:
+                    raise ValueError("Fixed events cannot overlap.")
+            windows.append((event.start_time, event.end_time))
+
+        return self
 
 
 class ItineraryGenerationStartResponse(BaseModel):
@@ -142,4 +212,4 @@ class ItineraryGenerationStatusResponse(BaseModel):
     progress: int = Field(ge=0, le=100)
     message: str
     itinerary: GeneratedItinerary | None = None
-    error: str | None = None
+    error: GenerationJobError | None = None

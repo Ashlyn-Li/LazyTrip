@@ -3,7 +3,11 @@ from dataclasses import dataclass
 from threading import Lock
 from uuid import uuid4
 
-from app.modules.itineraries.schemas import GeneratedItinerary, GenerationStatus
+from app.modules.itineraries.schemas import (
+    GeneratedItinerary,
+    GenerationJobError,
+    GenerationStatus,
+)
 
 
 @dataclass
@@ -13,7 +17,7 @@ class ItineraryGenerationJob:
     progress: int
     message: str
     itinerary: GeneratedItinerary | None = None
-    error: str | None = None
+    error: GenerationJobError | None = None
 
 
 class ItineraryJobStore:
@@ -53,12 +57,12 @@ class ItineraryJobStore:
             job.itinerary = itinerary
             job.error = None
 
-    def fail(self, job_id: str, error: str) -> None:
+    def fail(self, job_id: str, *, code: str, message: str) -> None:
         with self._lock:
             job = self._jobs[job_id]
             job.status = "failed"
-            job.message = "LazyTrip couldn't generate this draft."
-            job.error = error
+            job.message = message
+            job.error = GenerationJobError(code=code, message=message)
 
 
 job_store = ItineraryJobStore()

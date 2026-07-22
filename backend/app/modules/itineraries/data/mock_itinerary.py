@@ -10,6 +10,7 @@ from app.modules.trips.service import create_trip_preview
 BASE_TOKYO_ITINERARY = {
     "id": "tokyo-generated-mock",
     "status": "mock",
+    "provider": "fake",
     "title": "Three-day Tokyo discovery",
     "destination": "Tokyo, Japan",
     "summary": "A mock Tokyo draft built from your validated trip and preferences. Live places, opening hours, routes, hotels, and prices have not been checked.",
@@ -276,8 +277,58 @@ def build_mock_itinerary(request: ItineraryGenerationRequest) -> GeneratedItiner
             day["items"] = _clone_items_for_extra_day(day, day_offset + 1)
         generated_days.append(day)
 
+    _apply_structured_fixed_events(generated_days, request)
     itinerary_data["days"] = generated_days
     return GeneratedItinerary.model_validate(itinerary_data)
+
+
+def _apply_structured_fixed_events(
+    days: list[dict[str, object]], request: ItineraryGenerationRequest
+) -> None:
+    for day in days:
+        items = cast(list[dict[str, object]], day["items"])
+        for item in items:
+            if item.get("type") != "travel":
+                item["isFixed"] = False
+                if item.get("bookingStatus") == "booked":
+                    item["bookingStatus"] = "recommended"
+
+    for event in request.fixed_events:
+        day_number = (event.date - request.trip.departure_date).days + 1
+        day = days[day_number - 1]
+        items = cast(list[dict[str, object]], day["items"])
+        matching_item = next((item for item in items if item.get("id") == event.id), None)
+
+        if matching_item is None:
+            matching_item = {
+                "id": event.id,
+                "type": "activity",
+                "description": "Structured fixed event supplied by the traveller.",
+                "cost": None,
+                "bookingStatus": "recommended",
+            }
+        else:
+            items.remove(matching_item)
+
+        matching_item.update(
+            {
+                "title": event.title,
+                "location": event.location or "Location to be confirmed",
+                "startTime": event.start_time,
+                "endTime": event.end_time,
+                "isFixed": True,
+            }
+        )
+        insertion_index = next(
+            (
+                index
+                for index, item in enumerate(items)
+                if item.get("type") != "travel"
+                and str(item.get("startTime", "99:99")) > event.start_time
+            ),
+            len(items),
+        )
+        items.insert(insertion_index, matching_item)
 
 
 def _clone_items_for_extra_day(day: dict[str, object], day_number: int) -> list[dict[str, object]]:

@@ -206,17 +206,46 @@ If validation fails, the job is marked `failed` and no invalid itinerary is retu
 
 The in-memory job store is intentionally temporary. Jobs disappear when FastAPI restarts, and multiple production workers cannot safely share this store. Durable state is the next architectural step before any real provider integration.
 
-Future configuration:
+Provider configuration:
 
 ```text
 ITINERARY_GENERATOR=fake
-
-# Future real provider configuration - not active
 OPENAI_API_KEY=
+OPENAI_BASE_URL=
 OPENAI_MODEL=
+OPENAI_MAX_OUTPUT_TOKENS=6000
+OPENAI_REQUEST_TIMEOUT_SECONDS=45
+
+# OpenAI-compatible routing such as Portkey can use:
+OPENAI_BASE_URL=https://portkey.bain.dev/v1
+OPENAI_MODEL=personal-openai/gpt-5.4
 ```
 
-Before a real LLM provider is enabled, LazyTrip needs moderation, rate limits, quotas, domain enforcement, and strict structured-output validation.
+`ITINERARY_GENERATOR=fake` requires no API key and never initializes the OpenAI client.
+
+`ITINERARY_GENERATOR=openai` requires `OPENAI_API_KEY`, `OPENAI_MODEL`, a positive `OPENAI_MAX_OUTPUT_TOKENS`, and a positive `OPENAI_REQUEST_TIMEOUT_SECONDS`. Unsupported provider names and missing OpenAI settings fail clearly during settings/provider creation; the backend must not silently fall back to fake mode.
+
+The OpenAI provider uses the official Python SDK with the Responses API structured-output parser. It sends developer instructions separately from backend-controlled structured context, clearly marks traveller comments as untrusted data, applies the configured output-token limit and timeout, and returns the same `GeneratedItinerary` schema as the fake provider.
+
+The real-provider validation pipeline is:
+
+```text
+Validated trip and preferences
+        |
+Prompt and structured context
+        |
+OpenAI structured response
+        |
+Pydantic itinerary validation
+        |
+Existing itinerary business validator
+        |
+Job completed
+```
+
+Provider failures are mapped to safe codes such as `llm_authentication_failed`, `llm_rate_limited`, `llm_timeout`, `llm_unavailable`, `llm_refused`, `llm_invalid_output`, and `llm_unknown_error`. Job responses do not return raw SDK exceptions, request headers, API keys, full provider responses, stack traces, or internal prompt contents.
+
+Before a real LLM provider is exposed beyond local development, LazyTrip still needs moderation, rate limits, quotas, domain enforcement, durable state, and operational monitoring.
 
 ## Recommended next milestone
 

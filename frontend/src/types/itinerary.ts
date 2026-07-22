@@ -39,7 +39,8 @@ export type ItineraryDay = {
 
 export type MockItinerary = {
   id: string;
-  status: "mock";
+  status: "mock" | "generated";
+  provider: "fake" | "openai";
   title: string;
   destination: string;
   summary: string;
@@ -80,7 +81,7 @@ export type ItineraryGenerationStatusResponse = {
   progress: number;
   message: string;
   itinerary: GeneratedItinerary | null;
-  error: string | null;
+  error: { code: string; message: string } | null;
 };
 
 export type FeedbackAction = "replace" | "reschedule" | "find-cheaper-option";

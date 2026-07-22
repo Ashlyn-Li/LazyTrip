@@ -1,11 +1,16 @@
 import asyncio
+import logging
 from threading import Thread
 
+from app.config import get_settings
+from app.modules.itineraries.errors import ItineraryProviderError
 from app.modules.itineraries.job_store import ItineraryGenerationJob, ItineraryJobStore, job_store
 from app.modules.itineraries.providers.base import ItineraryGenerator
-from app.modules.itineraries.providers.fake import FakeItineraryGenerator
+from app.modules.itineraries.providers.factory import create_itinerary_generator
 from app.modules.itineraries.schemas import ItineraryGenerationRequest
-from app.modules.itineraries.validator import validate_generated_itinerary
+from app.modules.itineraries.validator import ItineraryValidationError, validate_generated_itinerary
+
+logger = logging.getLogger(__name__)
 
 STAGES = [
     ("validating", 15, "Checking your trip details"),
@@ -23,7 +28,7 @@ class ItineraryGenerationService:
         stage_delay_seconds: float = 1.1,
     ) -> None:
         self.store = store
-        self.generator = generator or FakeItineraryGenerator()
+        self.generator = generator or create_itinerary_generator(get_settings())
         self.stage_delay_seconds = stage_delay_seconds
 
     def start(self, request: ItineraryGenerationRequest) -> ItineraryGenerationJob:
@@ -45,10 +50,24 @@ class ItineraryGenerationService:
                 itinerary,
                 start_date=request.trip.departure_date,
                 return_date=request.trip.return_date,
+                fixed_events=request.fixed_events,
             )
             self.store.complete(job_id, itinerary)
+        except ItineraryProviderError as error:
+            self.store.fail(job_id, code=error.code, message=error.message)
+        except ItineraryValidationError as error:
+            logger.warning("Generated itinerary rejected by backend validation: %s", error)
+            self.store.fail(
+                job_id,
+                code="llm_invalid_output",
+                message="LazyTrip received an invalid itinerary draft. Please try again.",
+            )
         except Exception:
-            self.store.fail(job_id, "ITINERARY_GENERATION_FAILED")
+            self.store.fail(
+                job_id,
+                code="itinerary_generation_failed",
+                message="LazyTrip couldn't generate this draft. Please try again.",
+            )
 
 
 generation_service = ItineraryGenerationService()

@@ -3,6 +3,7 @@ import type { MockItinerary } from "@/types/itinerary";
 export const mockItinerary: MockItinerary = {
   id: "tokyo-demo-3-day",
   status: "mock",
+  provider: "fake",
   title: "Three-day Tokyo discovery",
   destination: "Tokyo, Japan",
   summary:
