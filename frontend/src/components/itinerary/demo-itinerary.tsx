@@ -13,10 +13,12 @@ import { OverallFeedbackBox } from "@/components/itinerary/overall-feedback-box"
 import { AppHeader } from "@/components/layout/app-header";
 import { PageContainer } from "@/components/layout/page-container";
 import { mockItinerary } from "@/data/mock-itinerary";
+import { getItineraryGeneration, startItineraryGeneration } from "@/lib/api/itinerary-generations";
 import {
   loadGeneratedItinerary,
   loadTripPreferences,
-  loadTripSearchData
+  loadTripSearchData,
+  saveGeneratedItinerary
 } from "@/lib/storage/planning-session";
 import {
   cancelChangeRequest,
@@ -35,8 +37,11 @@ import type {
   FeedbackReason,
   ItineraryActivity,
   ItineraryFeedback,
+  ItineraryItemReview,
   ItineraryItemUserState
 } from "@/types/itinerary";
+
+const pollIntervalMs = 1400;
 
 export const DemoItinerary = () => {
   const [hasLoadedClientState, setHasLoadedClientState] = useState(false);
@@ -49,6 +54,9 @@ export const DemoItinerary = () => {
   const [overallFeedback, setOverallFeedback] = useState<ReturnType<typeof loadOverallFeedback>>(null);
   const [activeChangeRequestId, setActiveChangeRequestId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Record<string, string>>({});
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenerationProgress, setRegenerationProgress] = useState(0);
+  const [regenerationMessage, setRegenerationMessage] = useState("Ready to apply feedback");
   const itinerary = generatedItinerary;
 
   useEffect(() => {
@@ -197,6 +205,7 @@ export const DemoItinerary = () => {
   const lockedCount = itemStates.filter((state) => state.isLocked).length;
   const changeRequestCount = itemStates.filter((state) => state.changeStatus === "change-requested").length;
   const removedCount = itemStates.filter((state) => state.changeStatus === "removed").length;
+  const hasOverallFeedback = Boolean(overallFeedback?.comment.trim());
 
   const handleSaveOverallFeedback = (comment: string) => {
     const nextFeedback = {
@@ -207,6 +216,92 @@ export const DemoItinerary = () => {
 
     setOverallFeedback(nextFeedback);
     saveOverallFeedback(nextFeedback);
+  };
+
+  const buildReview = () => {
+    const itemReviews: ItineraryItemReview[] = itinerary.days.flatMap((day) =>
+      day.items
+        .filter((item): item is ItineraryActivity => item.type !== "travel")
+        .map((activity) => {
+          const state = getRenderedState(activity.id);
+          const feedback = getRenderedFeedback(activity.id);
+
+          return {
+            itineraryItemId: activity.id,
+            status: state.isLocked
+              ? "confirmed"
+              : state.changeStatus === "change-requested"
+                ? "change-requested"
+                : state.changeStatus,
+            action: feedback?.action ?? null,
+            reasons: feedback?.reasons ?? [],
+            comment: feedback?.comment ?? ""
+          };
+        })
+    );
+
+    return {
+      overallComment: overallFeedback?.comment ?? "",
+      itemReviews
+    };
+  };
+
+  const pollRegenerationJob = async (jobId: string) => {
+    while (true) {
+      const statusResponse = await getItineraryGeneration(jobId);
+
+      setRegenerationProgress(statusResponse.progress);
+      setRegenerationMessage(statusResponse.message);
+
+      if (statusResponse.status === "completed") {
+        if (!statusResponse.itinerary) {
+          throw new Error("Completed regeneration did not include an itinerary.");
+        }
+
+        setGeneratedItinerary(statusResponse.itinerary);
+        saveGeneratedItinerary(statusResponse.itinerary);
+        setSelectedDay(1);
+        setItemStates([]);
+        setFeedbackRecords([]);
+        setOverallFeedback(null);
+        saveItineraryItemStates([]);
+        saveItineraryFeedback([]);
+        saveOverallFeedback({ itineraryId: statusResponse.itinerary.id, comment: "", updatedAt: new Date().toISOString() });
+        return;
+      }
+
+      if (statusResponse.status === "failed") {
+        throw new Error(statusResponse.error?.message ?? "LazyTrip couldn't apply this feedback.");
+      }
+
+      await new Promise((resolve) => window.setTimeout(resolve, pollIntervalMs));
+    }
+  };
+
+  const handleApplyFeedback = async () => {
+    if (!tripSearchData || !preferences || isRegenerating) {
+      return;
+    }
+
+    setIsRegenerating(true);
+    setRegenerationProgress(0);
+    setRegenerationMessage("Starting feedback regeneration");
+
+    try {
+      const startResponse = await startItineraryGeneration({
+        trip: tripSearchData,
+        preferences,
+        originalItinerary: itinerary,
+        review: buildReview()
+      });
+
+      await pollRegenerationJob(startResponse.job_id);
+      setRegenerationMessage("Updated itinerary ready");
+    } catch (error) {
+      setRegenerationMessage(error instanceof Error ? error.message : "LazyTrip couldn't apply this feedback.");
+    } finally {
+      setIsRegenerating(false);
+    }
   };
 
   if (!hasLoadedClientState) {
@@ -248,7 +343,16 @@ export const DemoItinerary = () => {
       <PageContainer>
         <div className="relative space-y-6 pb-12 pt-4">
           <ItineraryHeader itinerary={itinerary} tripSearchData={tripSearchData} preferences={preferences} />
-          <FeedbackSummary lockedCount={lockedCount} changeRequestCount={changeRequestCount} removedCount={removedCount} />
+          <FeedbackSummary
+            lockedCount={lockedCount}
+            changeRequestCount={changeRequestCount}
+            removedCount={removedCount}
+            hasOverallFeedback={hasOverallFeedback}
+            isRegenerating={isRegenerating}
+            progress={regenerationProgress}
+            message={regenerationMessage}
+            onApplyFeedback={handleApplyFeedback}
+          />
           <section className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-sm">
             <h2 className="text-2xl font-bold text-ink">Trip overview</h2>
             <p className="mt-3 text-base leading-7 text-slate-700">{itinerary.summary}</p>
@@ -261,6 +365,13 @@ export const DemoItinerary = () => {
             onSave={handleSaveOverallFeedback}
           />
           <DaySelector days={itinerary.days} selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+          <section className="rounded-[2rem] border border-coast-100 bg-white/90 p-5 shadow-sm">
+            <h2 className="text-2xl font-bold text-ink">Review day {selectedItineraryDay.dayNumber}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-700">
+              Mark activities to keep, remove, or change. Use the feedback box above for trip-wide instructions,
+              then apply feedback when the review is ready.
+            </p>
+          </section>
           <DayTimeline
             day={selectedItineraryDay}
             activeChangeRequestId={activeChangeRequestId}

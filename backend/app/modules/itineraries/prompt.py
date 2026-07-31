@@ -12,10 +12,11 @@ Instruction priority, highest first:
 1. Output schema and backend safety rules.
 2. Trip dates and destination.
 3. Structured fixed events.
-4. Accessibility, dietary, and other hard requirements.
-5. Traveller count, explicit budget constraints, and exclusions.
-6. Must-see places and strong preferences.
-7. Pace, interests, transport, start period, variety, and general quality.
+4. Regeneration review decisions for existing itinerary items.
+5. Accessibility, dietary, and other hard requirements.
+6. Traveller count, explicit budget constraints, and exclusions.
+7. Must-see places and strong preferences.
+8. Pace, interests, transport, start period, variety, and general quality.
 
 Planning policy:
 - Create days from departureDate inclusive to returnDate exclusive.
@@ -28,6 +29,10 @@ Planning policy:
   transfers, and breaks do not necessarily count as major activities.
 - Respect the preferred start time, free-time level, transport modes, whole-group needs, dietary
   and accessibility requirements, must-see requests, and things to avoid.
+- When original_itinerary and itinerary_review are supplied, regenerate the itinerary rather than
+  appending notes. Preserve confirmed items where possible, remove items marked removed unless they
+  are structured fixed events, and address change-requested items using their action, reasons, and
+  comments. Treat unchanged items as flexible.
 - If arrival or departure times are absent, do not invent them; keep boundary days flexible and
   note that timing needs confirmation.
 - Add useful meal opportunities and breaks, but do not add generic filler entries.
@@ -54,7 +59,7 @@ and describe the unresolved conflict in the structured notes.
 
 
 def build_itinerary_context(request: ItineraryGenerationRequest) -> dict[str, object]:
-    return {
+    context: dict[str, object] = {
         "trip": request.trip.model_dump(mode="json"),
         "preferences": request.preferences.model_dump(mode="json", by_alias=True),
         "structured_fixed_events": [
@@ -105,6 +110,32 @@ def build_itinerary_context(request: ItineraryGenerationRequest) -> dict[str, ob
             ),
         },
     }
+
+    if request.original_itinerary is not None or request.review is not None:
+        context["regeneration"] = {
+            "task": (
+                "Revise the original itinerary using the review inputs while still returning one "
+                "complete itinerary matching the output schema."
+            ),
+            "original_itinerary": (
+                request.original_itinerary.model_dump(mode="json", by_alias=True)
+                if request.original_itinerary is not None
+                else None
+            ),
+            "itinerary_review": (
+                request.review.model_dump(mode="json", by_alias=True)
+                if request.review is not None
+                else None
+            ),
+            "status_meanings": {
+                "confirmed": "The traveller wants to keep this item if feasible.",
+                "change-requested": "The traveller wants this item revised according to feedback.",
+                "removed": "The traveller wants this item removed unless it is a structured fixed event.",
+                "unchanged": "No explicit decision; adjust only if needed for itinerary quality.",
+            },
+        }
+
+    return context
 
 
 def build_itinerary_input(request: ItineraryGenerationRequest) -> list[dict[str, str]]:

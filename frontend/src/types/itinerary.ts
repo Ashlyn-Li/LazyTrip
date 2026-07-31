@@ -120,3 +120,16 @@ export type ItineraryOverallFeedback = {
   comment: string;
   updatedAt: string;
 };
+
+export type ItineraryItemReview = {
+  itineraryItemId: string;
+  status: "confirmed" | "change-requested" | "removed" | "unchanged";
+  action?: FeedbackAction | null;
+  reasons: FeedbackReason[];
+  comment: string;
+};
+
+export type ItineraryReview = {
+  overallComment: string;
+  itemReviews: ItineraryItemReview[];
+};

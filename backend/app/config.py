@@ -5,6 +5,11 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+DEFAULT_ALLOWED_FRONTEND_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
 
 class ConfigurationError(RuntimeError):
     """Raised when trusted server configuration is missing or invalid."""
@@ -32,9 +37,9 @@ def _load_local_env() -> dict[str, str]:
 
 class Settings(BaseModel):
     allowed_frontend_origins: list[str] = Field(
-        default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"]
+        default_factory=lambda: list(DEFAULT_ALLOWED_FRONTEND_ORIGINS)
     )
-    itinerary_generator: Literal["fake", "openai"] = "openai"
+    itinerary_generator: Literal["fake", "openai"] = "fake"
     openai_api_key: str | None = None
     openai_base_url: str | None = None
     openai_model: str | None = None
@@ -80,7 +85,7 @@ def get_settings() -> Settings:
 
     return Settings(
         allowed_frontend_origins=read_env("LAZYTRIP_ALLOWED_FRONTEND_ORIGINS")
-        or Settings().allowed_frontend_origins,
+        or list(DEFAULT_ALLOWED_FRONTEND_ORIGINS),
         itinerary_generator=read_env("ITINERARY_GENERATOR", "fake") or "fake",
         openai_api_key=read_env("OPENAI_API_KEY") or read_env("PORTKEY_API_KEY"),
         openai_base_url=read_env("OPENAI_BASE_URL") or read_env("PORTKEY_BASE_URL"),

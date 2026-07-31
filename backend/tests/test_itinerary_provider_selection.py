@@ -5,6 +5,16 @@ from app.modules.itineraries.providers import factory
 from app.modules.itineraries.providers.fake import FakeItineraryGenerator
 
 
+def test_default_settings_are_safe_without_provider_credentials() -> None:
+    settings = Settings()
+
+    assert settings.itinerary_generator == "fake"
+    assert settings.allowed_frontend_origins == [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
+
 class SelectedOpenAIGenerator:
     def __init__(
         self,

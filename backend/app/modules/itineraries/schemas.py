@@ -16,6 +16,19 @@ GenerationStatus = Literal[
 ]
 
 ItineraryProvider = Literal["fake", "openai"]
+FeedbackAction = Literal["replace", "reschedule", "find-cheaper-option"]
+FeedbackReason = Literal[
+    "too-expensive",
+    "too-far",
+    "not-interested",
+    "wrong-time",
+    "too-touristy",
+    "prefer-local",
+    "slower-pace",
+    "accessibility-concern",
+    "other",
+]
+ItemReviewStatus = Literal["confirmed", "change-requested", "removed", "unchanged"]
 
 
 class Money(BaseModel):
@@ -132,6 +145,45 @@ class GeneratedItinerary(BaseModel):
     notes: list[str] = Field(max_length=8)
 
 
+class ItineraryItemReview(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    itinerary_item_id: str = Field(
+        min_length=1,
+        max_length=80,
+        validation_alias="itineraryItemId",
+        serialization_alias="itineraryItemId",
+    )
+    status: ItemReviewStatus
+    action: FeedbackAction | None = None
+    reasons: list[FeedbackReason] = Field(default_factory=list, max_length=9)
+    comment: str = Field(default="", max_length=1000)
+
+
+class ItineraryReview(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    overall_comment: str = Field(
+        default="",
+        max_length=2000,
+        validation_alias="overallComment",
+        serialization_alias="overallComment",
+    )
+    item_reviews: list[ItineraryItemReview] = Field(
+        default_factory=list,
+        max_length=80,
+        validation_alias="itemReviews",
+        serialization_alias="itemReviews",
+    )
+
+    @model_validator(mode="after")
+    def validate_unique_item_reviews(self) -> "ItineraryReview":
+        item_ids = [review.itinerary_item_id for review in self.item_reviews]
+        if len(item_ids) != len(set(item_ids)):
+            raise ValueError("Itinerary review item IDs must be unique.")
+        return self
+
+
 class GenerationJobError(BaseModel):
     code: str
     message: str
@@ -177,6 +229,12 @@ class ItineraryGenerationRequest(BaseModel):
         validation_alias="fixedEvents",
         serialization_alias="fixedEvents",
     )
+    original_itinerary: GeneratedItinerary | None = Field(
+        default=None,
+        validation_alias="originalItinerary",
+        serialization_alias="originalItinerary",
+    )
+    review: ItineraryReview | None = None
 
     @model_validator(mode="after")
     def validate_fixed_events(self) -> "ItineraryGenerationRequest":
