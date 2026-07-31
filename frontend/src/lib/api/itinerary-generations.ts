@@ -1,6 +1,7 @@
 import { apiRequest } from "@/lib/api/client";
 import type {
   GeneratedItinerary,
+  ItineraryReview,
   ItineraryGenerationStartResponse,
   ItineraryGenerationStatus,
   ItineraryGenerationStatusResponse
@@ -10,6 +11,8 @@ import type { TripPreferences, TripSearchData } from "@/types/trip";
 type StartItineraryGenerationInput = {
   trip: TripSearchData;
   preferences: TripPreferences;
+  originalItinerary?: GeneratedItinerary;
+  review?: ItineraryReview;
 };
 
 const generationStatuses: ItineraryGenerationStatus[] = [
@@ -95,7 +98,7 @@ const validateStatusResponse = (
   return response;
 };
 
-const toItineraryGenerationRequest = (input: StartItineraryGenerationInput): StartItineraryGenerationInput => ({
+const toItineraryGenerationRequest = (input: StartItineraryGenerationInput) => ({
   trip: {
     origin: input.trip.origin,
     destination: input.trip.destination,
@@ -121,7 +124,9 @@ const toItineraryGenerationRequest = (input: StartItineraryGenerationInput): Sta
     mustSeePlaces: input.preferences.mustSeePlaces,
     thingsToAvoid: input.preferences.thingsToAvoid,
     additionalComments: input.preferences.additionalComments
-  }
+  },
+  ...(input.originalItinerary ? { originalItinerary: input.originalItinerary } : {}),
+  ...(input.review ? { review: input.review } : {})
 });
 
 export const startItineraryGeneration = async (input: StartItineraryGenerationInput) => {

@@ -3,6 +3,7 @@ from app.modules.itineraries.prompt import (
     build_itinerary_context,
     build_itinerary_input,
 )
+from app.modules.itineraries.data.mock_itinerary import build_mock_itinerary
 from app.modules.itineraries.schemas import ItineraryGenerationRequest
 from tests.test_itinerary_generation import VALID_GENERATION_REQUEST
 
@@ -77,3 +78,40 @@ def test_prompt_accepts_no_general_purpose_prompt_field() -> None:
         return
 
     raise AssertionError("Expected arbitrary prompt fields to be rejected.")
+
+
+def test_context_includes_regeneration_review_when_supplied() -> None:
+    original_request = ItineraryGenerationRequest.model_validate(VALID_GENERATION_REQUEST)
+    original_itinerary = build_mock_itinerary(original_request)
+    payload = {
+        **VALID_GENERATION_REQUEST,
+        "originalItinerary": original_itinerary.model_dump(mode="json", by_alias=True),
+        "review": {
+            "overallComment": "Make the trip slower and add more local food.",
+            "itemReviews": [
+                {
+                    "itineraryItemId": original_itinerary.days[0].items[0].id,
+                    "status": "confirmed",
+                    "reasons": [],
+                    "comment": "",
+                },
+                {
+                    "itineraryItemId": original_itinerary.days[0].items[2].id,
+                    "status": "change-requested",
+                    "action": "replace",
+                    "reasons": ["too-touristy"],
+                    "comment": "Swap this for something quieter.",
+                },
+            ],
+        },
+    }
+    request = ItineraryGenerationRequest.model_validate(payload)
+    context = build_itinerary_context(request)
+
+    assert context["regeneration"]["original_itinerary"]["id"] == original_itinerary.id
+    assert context["regeneration"]["itinerary_review"]["overallComment"] == (
+        "Make the trip slower and add more local food."
+    )
+    assert context["regeneration"]["status_meanings"]["confirmed"] == (
+        "The traveller wants to keep this item if feasible."
+    )
